@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 import subprocess
 import logging
 
-PACKAGE_NAME = 'skpu'
+PACKAGE_NAME = 'sku'
 
 
 setup(

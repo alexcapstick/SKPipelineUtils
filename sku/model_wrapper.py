@@ -157,6 +157,7 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
     
     def predict(self, 
                 X:typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]],
+                return_ground_truth:bool=False,
                 )->np.ndarray:
         '''
         This will predict using the model being wrapped.
@@ -180,6 +181,10 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
             ```.
         
+        - ```return_ground_truth```: ```bool```, optional: 
+            Whether to return the ground truth with the output.
+            This is useful if this model was part of a pipeline
+            in which the labels are altered.
         
         Returns
         --------
@@ -187,12 +192,21 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         - ```predictions```: ```numpy.ndarray``` : 
             The predictions, as a numpy array.
         
+        - ```labels```: ```numpy.ndarray``` : 
+            The labels, as a numpy array. Only returned
+            if ```return_ground_truth=True```.
+        
 
         '''
         if 'labelled' in X:
             output = self.model_init.predict(X['labelled']['X'])
+            labels = X['labelled']['y']
         
         if 'X' in X:
             output = self.model_init.predict(X['X'])
+            labels = X['y']
         
+        if return_ground_truth:
+            return output, labels
+
         return output
