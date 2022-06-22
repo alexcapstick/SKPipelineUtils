@@ -33,7 +33,6 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             Keyword arguments given to the model init.
         
         '''
-
         self._params_model = get_default_args(model)
         for key, value in kwargs.items():
             self.__setattr__(key, value)
@@ -42,11 +41,21 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         self.model = model
         
         self._params = {}
-        self._params['model'] = model
+        self.model_init = self.model(**self._params_model)
+        self._params['model'] = self.model_init
         self._params.update(**self._params_model)
 
         return
-    
+
+    @classmethod
+    def _get_param_names(self):
+        """Get parameter names for the estimator"""
+        if isinstance(self, type):
+            return ['model']
+        else:
+            parameters = list(self.get_params().keys())
+            return sorted([p.name for p in parameters])
+        
     def get_params(self, deep:bool=True) -> dict:
         '''
         Overrides sklearn function.
@@ -71,7 +80,7 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         
         '''
         return self._params
-    
+        
     def set_params(self, **params):
         '''
 
@@ -100,7 +109,7 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
                 self._params_model[key] = value
             if key in self._params:
                 self._params[key] = value
-        return super().set_params(**params)
+        return super(SKModelWrapperDD, self).set_params(**params)
 
     def fit(self, 
             X:typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]], 

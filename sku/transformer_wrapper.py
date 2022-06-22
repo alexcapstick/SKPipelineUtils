@@ -57,16 +57,26 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             self._params_transformer[key] = value
 
         self.transformer = transformer
+        self.transformer_init = self.transformer(**self._params_transformer)
         self.semi_supervised = semi_supervised
         
         self._params = {}
-        self._params['transformer'] = transformer
+        self._params['transformer'] = self.transformer_init
         self._params['semi_supervised'] = semi_supervised
         
         self._params.update(**self._params_transformer)
 
         return
-    
+        
+    @classmethod
+    def _get_param_names(self):
+        """Get parameter names for the estimator"""
+        if isinstance(self, type):
+            return ['transformer']
+        else:
+            parameters = list(self.get_params().keys())
+            return sorted([p.name for p in parameters])
+        
     def get_params(self,deep=True) -> dict:
         '''
         Overrides sklearn function.
@@ -91,7 +101,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         
         '''
         return self._params
-    
+        
     def set_params(self, **params):
         '''
         
@@ -120,7 +130,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
                 self._params_transformer[key] = value
             if key in self._params:
                 self._params[key] = value
-        return super().set_params(**params)
+        return super(SKTransformerWrapperDD, self).set_params(**params)
 
     def fit(self, 
             X:typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]], 
