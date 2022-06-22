@@ -1,5 +1,7 @@
 import inspect
 import typing
+import functools
+
 
 def get_default_args(func:typing.Callable):
     '''
@@ -32,3 +34,13 @@ def get_default_args(func:typing.Callable):
         for k, v in signature.parameters.items()
         if v.default is not inspect.Parameter.empty
     }
+
+
+
+
+def partialclass(cls, *args, **kwds):
+    class NewCls(cls):
+        __init__ = functools.partialmethod(cls.__init__, *args, **kwds)
+        
+    NewCls.__name__ = cls.__name__
+    return NewCls

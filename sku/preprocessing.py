@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sklearn
 import logging
 import typing
@@ -33,7 +35,11 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         self.scalars_fitted = False
         self.groups_fitted = []
     
-    def fit(self, X:np.array, groups:typing.Union[np.array, None]=None, y:typing.Union[np.array, None]=None):
+    def fit(self, 
+                X:np.ndarray, 
+                y:typing.Union[np.ndarray, None]=None, 
+                groups:typing.Union[np.ndarray, None]=None,
+                ) -> StandardGroupScaler:
         '''
         Compute the mean and std to be used for later scaling.
         
@@ -42,19 +48,21 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         Arguments
         ---------
         
-        - ```X```: ```np.array```: 
+        - ```X```: ```np.ndarray```: 
             The data used to compute the mean and standard deviation used for later
             scaling along the features axis. This should be of shape 
             ```(n_samples, n_features)```.
-        
-        - ```groups```: ```typing.Union[np.array, None]```, optional:
+
+        - ```y```: ```typing.Union[np.ndarray, None]```, optional:
+            Igorned. 
+            Defaults to ```None```.
+
+        - ```groups```: ```typing.Union[np.ndarray, None]```, optional:
             The groups to split the scaling by. This should be of shape
             ```(n_samples,)```.
             Defaults to ```None```.
         
-        - ```y```: ```typing.Union[np.array, None]```, optional:
-            Igorned. 
-            Defaults to ```None```.
+
         
         
         
@@ -110,7 +118,11 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         
         return self
     
-    def transform(self, X:np.array, groups:typing.Union[np.array, None]=None, y:typing.Union[np.array, None]=None):
+    def transform(self, 
+                    X:np.ndarray, 
+                    y:typing.Union[np.ndarray, None]=None,
+                    groups:typing.Union[np.ndarray, None]=None, 
+                    ) -> np.ndarray:
         '''
         Perform standardization by centering and scaling by group.
 
@@ -118,17 +130,17 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         Arguments
         ---------
         
-        - ```X```: ```np.array```: 
+        - ```X```: ```np.ndarray```: 
             The data used to scale along the features axis. This should be of shape 
             ```(n_samples, n_features)```.
-        
-        - ```groups```: ```typing.Union[np.array, None]```, optional:
+
+        - ```y```: ```typing.Union[np.ndarray, None]```, optional:
+            Ignored. 
+            Defaults to ```None```.
+
+        - ```groups```: ```typing.Union[np.ndarray, None]```, optional:
             The groups to split the scaling by. This should be of shape
             ```(n_samples,)```.
-            Defaults to ```None```.
-        
-        - ```y```: ```typing.Union[np.array, None]```, optional:
-            Ignored. 
             Defaults to ```None```.
         
         
@@ -136,7 +148,7 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         Returns
         --------
         
-        - ```X_norm```: ```np.array``` : 
+        - ```X_norm```: ```np.ndarray``` : 
             The transformed version of ```X```.
         
         
@@ -164,7 +176,11 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         return X_norm
     
 
-    def fit_transform(self, X:np.array, groups:typing.Union[np.array, None]=None, y:typing.Union[np.array, None]=None):
+    def fit_transform(self, 
+                        X:np.ndarray, 
+                        y:typing.Union[np.ndarray, None]=None,
+                        groups:typing.Union[np.ndarray, None]=None, 
+                        ) -> np.ndarray:
         '''
         Fit to data, then transform it. Fits transformer to X using the groups
         and returns a transformed version of X.
@@ -174,17 +190,17 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         Arguments
         ---------
         
-        - ```X```: ```np.array```: 
+        - ```X```: ```np.ndarray```: 
             The data used to compute the mean and standard deviation used for later
             scaling along the features axis. This should be of shape 
             ```(n_samples, n_features)```.
         
-        - ```groups```: ```typing.Union[np.array, None]```, optional:
+        - ```groups```: ```typing.Union[np.ndarray, None]```, optional:
             The groups to split the scaling by. This should be of shape
             ```(n_samples,)```.
             Defaults to ```None```.
         
-        - ```y```: ```typing.Union[np.array, None]```, optional:
+        - ```y```: ```typing.Union[np.ndarray, None]```, optional:
             Igorned. 
             Defaults to ```None```.
         

@@ -9,6 +9,8 @@ from .utils import get_default_args
 class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin):
     def __init__(self, 
                     model:typing.Any, 
+                    fit_on:typing.Union[typing.List[str], typing.List[typing.List[str]]] = [['X', 'y']],
+                    predict_on:typing.Union[typing.List[str], typing.List[typing.List[str]]] = [['X']],
                     **kwargs,
                     ) -> None:
         '''
@@ -29,6 +31,36 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             both ```.fit(X, y)``` and ```.predict(X)```.
             An example would be an abstracted pytorch model.
         
+        - ```fit_on```: ```typing.Union[typing.List[str], typing.List[typing.List[str]]]```: 
+            This allows the user to define the keys in the data 
+            dictionary that will be passed to the fit function.
+            The outer list will be iterated over, and the inner
+            list's keys will be used to get the data from the data dictionary,
+            which will be passed in that order as positional arguments
+            to the ```.fit()``` function. Multiple inner lists
+            will cause the ```.fit()``` function to be called
+            multiple times. If a list of strings is given then
+            they will be wrapped in an outer list, meaning that 
+            one ```.fit()``` is called, with arguments corresponding
+            to the keys given as strings.
+            Defaults to ```[['X', 'y']]```.
+
+        - ```predict_on```: ```typing.Union[typing.List[str], typing.List[typing.List[str]]]```: 
+            This allows the user to define the keys in the data 
+            dictionary that will be passed to the fit function.
+            The outer list will be iterated over, and the inner
+            list's keys will be used to get the data from the data dictionary,
+            which will be passed in that order as positional arguments
+            to the ```.predict_on()``` function. Multiple inner lists
+            will cause the ```.predict_on()``` function to be called
+            multiple times. The first key in each inner list
+            will be overwritten with the result from ```.predict_on()```.
+            If a list of strings is given then
+            they will be wrapped in an outer list, meaning that 
+            one ```.predict_on()``` is called, with arguments corresponding
+            to the keys given as strings.
+            Defaults to ```[['X']]```.
+        
         - ```*kwargs```: ```typing.Any```:
             Keyword arguments given to the model init.
         
@@ -39,10 +71,14 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             self._params_model[key] = value
 
         self.model = model
-        
+        self.fit_on = fit_on
+        self.predict_on = predict_on
         self._params = {}
         self.model_init = self.model(**self._params_model)
+
         self._params['model'] = self.model_init
+        self._params['fit_on'] = self.fit_on
+        self._params['predict_on'] = self.predict_on
         self._params.update(**self._params_model)
 
         return
@@ -112,7 +148,7 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         return super(SKModelWrapperDD, self).set_params(**params)
 
     def fit(self, 
-            X:typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]], 
+            X:typing.Dict[str, np.ndarray], 
             y:None=None,
             ) -> SKModelWrapperDD:
         '''
@@ -123,17 +159,9 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         Arguments
         ---------
         
-        - ```X```: ```typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]]```: 
+        - ```X```: ```typing.Dict[str, np.ndarray]```: 
             A dictionary containing the data.
-            For example, if ```semi_supervised=True```:
-            Either:
-            ```
-            X = {
-                    'labelled': {'X': X_DATA, 'y': Y_DATA, **kwargs},
-                    'unlabelled': {'X': X_DATA, 'y': Y_DATA, **kwargs},
-                    }
-            ```
-            Or
+            For example:
             ```
             X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
             ```.
@@ -153,21 +181,22 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         
         
         '''
+        if not any(isinstance(i, list) for i in self.fit_on):
+            fit_on_ = [self.fit_on]
+        else:
+            fit_on_ = self.fit_on
 
         self.model_init = self.model(**self._params_model)
+        for keys in fit_on_:
+            data = [X[key] for key in keys]
+            self.model_init.fit(*data)
 
-        if 'labelled' in X:
-            self.model_init.fit(X['labelled']['X'], X['labelled']['y'])
-
-        if 'X' in X:
-            self.model_init.fit(X['X'], X['y'])
-        
         return self
     
     def predict(self, 
-                X:typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]],
-                return_ground_truth:bool=False,
-                )->np.ndarray:
+                X:typing.Dict[str, np.ndarray],
+                return_data_dict:bool=False,
+                ) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
         '''
         This will predict using the model being wrapped.
         
@@ -176,21 +205,14 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         Arguments
         ---------
         
-        - ```X```: ```typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]]```: 
+        - ```X```: ```typing.Dict[str, np.ndarray]```: 
             A dictionary containing the data.
-            Either:
-            ```
-            X = {
-                    'labelled': {'X': X_DATA, 'y': Y_DATA, **kwargs},
-                    'unlabelled': {'X': X_DATA, 'y': Y_DATA, **kwargs},
-                    }
-            ```
-            Or
+            For example:
             ```
             X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
             ```.
         
-        - ```return_ground_truth```: ```bool```, optional: 
+        - ```return_data_dict```: ```bool```, optional: 
             Whether to return the ground truth with the output.
             This is useful if this model was part of a pipeline
             in which the labels are altered.
@@ -199,23 +221,32 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         --------
         
         - ```predictions```: ```numpy.ndarray``` : 
-            The predictions, as a numpy array.
+            The predictions, as a numpy array. If multiple
+            inner lists are given as ```predict_on```, then
+            a list of predictions will be returned.
         
-        - ```labels```: ```numpy.ndarray``` : 
+        - ```data_dict```: ```typing.Dict[str, np.ndarray]``` : 
             The labels, as a numpy array. Only returned
-            if ```return_ground_truth=True```.
+            if ```return_data_dict=True```.
         
 
         '''
-        if 'labelled' in X:
-            output = self.model_init.predict(X['labelled']['X'])
-            labels = X['labelled']['y']
-        
-        if 'X' in X:
-            output = self.model_init.predict(X['X'])
-            labels = X['y']
-        
-        if return_ground_truth:
-            return output, labels
+
+        output = []
+
+        if not any(isinstance(i, list) for i in self.predict_on):
+            predict_on_ = [self.predict_on]
+        else:
+            predict_on_ = self.predict_on
+
+        for keys in predict_on_:
+            data = [X[key] for key in keys]
+            output.append(self.model_init.predict(*data))
+
+        if len(output) == 1:
+            output = output[0]
+
+        if return_data_dict:
+            return output, X
 
         return output
