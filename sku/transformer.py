@@ -10,13 +10,6 @@ from .transformer_wrapper import SKTransformerWrapperDD
 from .utils import partialclass
 
 class _DropNaNRowsDD:
-    '''
-    The rows in which no NaNs 
-    appear across all given arguments
-    will be returned.
-
- 
-    '''
     def fit(self, X:typing.Any, y:None=None):
         '''
         Ignored.
