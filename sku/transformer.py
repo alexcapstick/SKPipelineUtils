@@ -10,30 +10,43 @@ from .transformer_wrapper import SKTransformerWrapperDD
 from .utils import partialclass
 
 class _DropNaNRowsDD:
-    def fit(self, X:typing.Any, y:None=None):
+    def fit(self, *args):
         '''
-        Ignored.
+        Collect the rows that will need
+        to be removed.
         
         
         
         Arguments
         ---------
         
-        - ```X```: ```typing.Any```: 
-            Ignored
-        
-        - ```y```: ```None```, optional:
-            Ignored. 
-            Defaults to ```None```.
+        - ```*args```: ```np.ndarray```:
+            Arguments to find the NaN
+            rows in.
         
         
         '''
+
+        self.nan_rows = []
+        for ia, arg in enumerate(args):
+            try:
+                if len(arg.shape)>1:
+                    self.nan_rows.append(np.any(pd.isnull(arg), axis=1))
+                else:
+                    self.nan_rows.append(pd.isnull(arg))
+            except Exception as e:
+                raise type(e)(f'Failed on argument {ia}: {str(e)}')
+        self.nan_rows = np.any(np.vstack(self.nan_rows), axis=0)
+
+
+
         return
     
     def transform(self, *args) -> typing.Union[list, np.ndarray]:
         '''
         This will remove the NaN rows
-        across all arguments.
+        across all arguments based on the
+        rows found in the ```.fit()``` method.
         
         Arguments
         ---------
@@ -52,17 +65,8 @@ class _DropNaNRowsDD:
         
         
         '''
-        nan_rows = []
-        for ia, arg in enumerate(args):
-            try:
-                if len(arg.shape)>1:
-                    nan_rows.append(np.any(pd.isnull(arg), axis=1))
-                else:
-                    nan_rows.append(pd.isnull(arg))
-            except Exception as e:
-                raise type(e)(f'Failed on argument {ia}: {str(e)}')
-        nan_rows = np.any(np.vstack(nan_rows), axis=0)
-        output = [arg[~nan_rows] for arg in args]
+
+        output = [arg[~self.nan_rows] for arg in args]
         if len(output)==1:
             output = output[0]
         return output

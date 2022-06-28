@@ -51,14 +51,14 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             The outer list will be iterated over, and the inner
             list's keys will be used to get the data from the data dictionary,
             which will be passed in that order as positional arguments
-            to the ```.predict_on()``` function. Multiple inner lists
-            will cause the ```.predict_on()``` function to be called
-            multiple times. The first key in each inner list
-            will be overwritten with the result from ```.predict_on()```.
-            If a list of strings is given then
-            they will be wrapped in an outer list, meaning that 
-            one ```.predict_on()``` is called, with arguments corresponding
-            to the keys given as strings.
+            to the ```.predict()``` function. Multiple inner lists
+            will cause the ```.predict()``` function to be called
+            multiple times, with each predict corresponding to the
+            fitted object in each of the fit calls. If there are
+            more ```.predict()``` calls than ```.fit()``` calls,
+            then the predict will be called on the beginning of the fit
+            object list again (ie: the predict calls indefinitely 
+            roll over the fit calls).
             Defaults to ```[['X']]```.
         
         - ```*kwargs```: ```typing.Any```:
@@ -75,6 +75,7 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         self.predict_on = predict_on
         self._params = {}
         self.model_init = self.model(**self._params_model)
+        self.fitted_models = None
 
         self._params['model'] = self.model_init
         self._params['fit_on'] = self.fit_on
@@ -143,6 +144,9 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         for key, value in params.items():
             if key in self._params_model:
                 self._params_model[key] = value
+                self.model_init = self.model(**self._params_model)
+                self._params.update(**self._params_model)
+                self._params['model'] = self.model_init
             if key in self._params:
                 self._params[key] = value
         return super(SKModelWrapperDD, self).set_params(**params)
@@ -186,10 +190,12 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         else:
             fit_on_ = self.fit_on
 
-        self.model_init = self.model(**self._params_model)
+        self.fitted_models = []
         for keys in fit_on_:
+            model_init = self.model(**self._params_model)
             data = [X[key] for key in keys]
-            self.model_init.fit(*data)
+            model_init.fit(*data)
+            self.fitted_models.append(model_init)
 
         return self
     
@@ -232,6 +238,9 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
 
         '''
 
+        if self.fitted_models is None:
+            raise TypeError('Please fit the model first.')
+
         output = []
 
         if not any(isinstance(i, list) for i in self.predict_on):
@@ -239,9 +248,10 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         else:
             predict_on_ = self.predict_on
 
-        for keys in predict_on_:
+        for nk, keys in enumerate(predict_on_):
             data = [X[key] for key in keys]
-            output.append(self.model_init.predict(*data))
+            output.append(self.fitted_models[nk%len(self.fitted_models)]
+                            .predict(*data))
 
         if len(output) == 1:
             output = output[0]

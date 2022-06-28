@@ -40,7 +40,8 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             which will be passed in that order as positional arguments
             to the ```.fit()``` function. Multiple inner lists
             will cause the ```.fit()``` function to be called
-            multiple times. If a list of strings is given then
+            multiple times, with each fitted version being saved as
+            a unique object in this class. If a list of strings is given then
             they will be wrapped in an outer list, meaning that 
             one ```.fit()``` is called, with arguments corresponding
             to the keys given as strings.
@@ -54,8 +55,14 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             which will be passed in that order as positional arguments
             to the ```.transform()``` function. Multiple inner lists
             will cause the ```.transform()``` function to be called
-            multiple times. The first key in each inner list
-            will be overwritten with the result from ```.transform()```.
+            multiple times, with each transform corresponding to the
+            fitted object in each of the fit calls. If there are
+            more ```.transform()``` calls than ```.fit()``` calls,
+            then the transform will be called on the beginning of the fit
+            object list again (ie: the transform calls indefinitely 
+            roll over the fit calls). The first key in each inner list
+            will be overwritten with the result from ```.transform()```,
+            unless ```all_key_transform=True```.
             If a list of strings is given then
             they will be wrapped in an outer list, meaning that 
             one ```.transform()``` is called, with arguments corresponding
@@ -67,7 +74,8 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             will output a result for all of the arguments given to 
             it. In this case, each of the values corresponding to the
             keys being transformed on, will be replaced by the 
-            corresponding output of the wrapped transform.
+            corresponding output of the wrapped transform. If ```False```,
+            only the first key will be transformed.
             ie: 
             ```
             x, y, z = self.wrapped_transform(x, y, z)
@@ -93,6 +101,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         self.fit_on = fit_on
         self.transform_on = transform_on
         self.all_key_transform = all_key_transform
+        self.fitted_transformers = None
 
         self._params = {}
         self._params['transformer'] = self.transformer_init
@@ -164,6 +173,9 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         for key, value in params.items():
             if key in self._params_transformer:
                 self._params_transformer[key] = value
+                self.transformer_init = self.transformer(**self._params_transformer)
+                self._params.update(**self._params_transformer)
+                self._params['transformer'] = self.transformer_init
             if key in self._params:
                 self._params[key] = value
         return super(SKTransformerWrapperDD, self).set_params(**params)
@@ -174,8 +186,6 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             ) -> SKTransformerWrapperDD:
         '''
         This will fit the transformer being wrapped.
-        
-        
         
         Arguments
         ---------
@@ -206,11 +216,13 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         else:
             fit_on_ = self.fit_on
 
-
-        self.transformer_init = self.transformer(**self._params_transformer)
+        self.fitted_transformers = []
         for keys in fit_on_:
+            transformer_init = self.transformer(**self._params_transformer)
             data = [X[key] for key in keys]
-            self.transformer_init.fit(*data)
+            transformer_init.fit(*data)
+            self.fitted_transformers.append(transformer_init)
+
         return self
     
     def transform(self, 
@@ -218,8 +230,6 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
                     ) -> typing.Dict[str, np.ndarray]:
         '''
         This will transform the data using the transformer being wrapped.
-        
-        
         
         Arguments
         ---------
@@ -249,10 +259,13 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         else:
             transform_on_ = self.transform_on
 
-        for keys in transform_on_:
+        if self.fitted_transformers is None:
+            raise TypeError('Please fit the trasform first.')
+        
+        for nk, keys in enumerate(transform_on_):
             data = [X_out[key] for key in keys]
-            outputs = self.transformer_init.transform(*data)
-            
+            outputs = (self.fitted_transformers[nk%len(self.fitted_transformers)]
+                        .transform(*data))
             if self.all_key_transform:
                 if len(data) == 1:
                     outputs = [outputs]
