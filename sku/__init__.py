@@ -5,3 +5,4 @@ from .transformer_wrapper import *
 from .transformer import *
 from .utils import *
 from .progress import *
+from .pipeline_searcher import *
