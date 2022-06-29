@@ -271,7 +271,12 @@ class PipelineSearchCV(BaseEstimator):
                                     results_pipeline, 
                                     pd.json_normalize(results_temp, 
                                                         record_path='metrics', 
-                                                        meta=['pipeline', 'splitter', 'params', 'train_id'])
+                                                        meta=['pipeline', 
+                                                                'splitter', 
+                                                                'params', 
+                                                                'train_id',
+                                                                'param_updates',
+                                                                ])
                                     
                                     ])
 
