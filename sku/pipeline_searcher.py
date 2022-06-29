@@ -47,7 +47,7 @@ class PipelineSearchCV(BaseEstimator):
                                                         ),
                             }
         pipeline_names = [
-                            'standard_scaler__gbt',
+                            'standard_scaler--gbt',
                             'gbt'
                         ]
         metrics = {
@@ -84,8 +84,8 @@ class PipelineSearchCV(BaseEstimator):
 
         - ```pipeline_names```: ```typing.List[str]```:
             This is a list of strings that describe the pipelines
-            An example would be ```standard_scaler__ae__mlp```.
-            The objects, separated by '__' should be keys in 
+            An example would be ```standard_scaler--ae--mlp```.
+            The objects, separated by '--' should be keys in 
             ```name_to_object```.
         
         - ```name_to_object```: ```typing.Dict[str, BaseEstimator]```:

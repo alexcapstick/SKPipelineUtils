@@ -16,5 +16,6 @@ setup(
     install_requires=[
                         "numpy>=1.22",
                         "scikit-learn>=1.0",
+                        "joblib>=1.1.0"
     ]
 )
