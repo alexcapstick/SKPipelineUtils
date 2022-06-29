@@ -260,3 +260,66 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             return output, X
 
         return output
+
+    def predict_proba(self, 
+                X:typing.Dict[str, np.ndarray],
+                return_data_dict:bool=False,
+                ) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
+        '''
+        This will predict the probabilities using the model being wrapped.
+        
+        
+        
+        Arguments
+        ---------
+        
+        - ```X```: ```typing.Dict[str, np.ndarray]```: 
+            A dictionary containing the data.
+            For example:
+            ```
+            X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
+            ```.
+        
+        - ```return_data_dict```: ```bool```, optional: 
+            Whether to return the ground truth with the output.
+            This is useful if this model was part of a pipeline
+            in which the labels are altered.
+        
+        Returns
+        --------
+        
+        - ```predictions```: ```numpy.ndarray``` : 
+            The predictions, as a numpy array. If multiple
+            inner lists are given as ```predict_on```, then
+            a list of predictions will be returned.
+        
+        - ```data_dict```: ```typing.Dict[str, np.ndarray]``` : 
+            The labels, as a numpy array. Only returned
+            if ```return_data_dict=True```.
+        
+
+        '''
+
+        if self.fitted_models is None:
+            raise TypeError('Please fit the model first.')
+
+        output = []
+
+        if not any(isinstance(i, list) for i in self.predict_on):
+            predict_on_ = [self.predict_on]
+        else:
+            predict_on_ = self.predict_on
+
+        for nk, keys in enumerate(predict_on_):
+            data = [X[key] for key in keys]
+            output.append(self.fitted_models[nk%len(self.fitted_models)]
+                            .predict_proba(*data))
+
+        if len(output) == 1:
+            output = output[0]
+
+        if return_data_dict:
+            return output, X
+
+        return output
+
