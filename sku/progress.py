@@ -2,8 +2,7 @@
 # package wide styling for progress bars
 tqdm_style = {
                 #'ascii':" ▖▘▝▗▚▞▉", 
-                'ascii':"▏▎▍▋▊▉",  
-                'colour':'black',
+                #'ascii':"▏▎▍▋▊▉",
                 'dynamic_ncols': True,
                 }
 
