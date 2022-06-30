@@ -322,5 +322,16 @@ class PipelineSearchCV(BaseEstimator):
             results = pd.concat([results, results_pipeline])
 
         self.tqdm_progress.close()
+
+        results = results[[
+                            'pipeline', 
+                            'split_number', 
+                            'metric', 
+                            'value', 
+                            'splitter', 
+                            'params', 
+                            'train_id', 
+                            'param_updates',
+                            ]]
         
         return results.reset_index(drop=True)
