@@ -3,11 +3,16 @@ import pandas as pd
 import typing
 import tqdm
 import uuid
+import joblib
+import functools
+
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import ParameterGrid
 
 from .pipeline import PipelineDD, pipeline_constructor
 from .progress import tqdm_style
+
+
 
 
 
@@ -23,6 +28,7 @@ class PipelineSearchCV(BaseEstimator):
                     split_transform_on:typing.List[str]=['X', 'y'],
                     param_grid:typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Dict[str, typing.Any]]]=None,
                     verbose:bool=False,
+                    n_jobs=1,
                     ):
         '''
         This class allows you to test multiple pipelines
@@ -141,6 +147,11 @@ class PipelineSearchCV(BaseEstimator):
             in each of the objects given in ```name_to_object```.
             Defaults to ```False```.     
         
+        - ```n_jobs```: ```int```:
+            The number of parallel jobs. ```-1``` will run the 
+            searches on all cores, but will incur significant memory 
+            and cpu cost.
+            Defaults to ```1```.     
         
         '''
         assert not cv is None, 'Currently cv=None is not supported. '\
@@ -155,40 +166,9 @@ class PipelineSearchCV(BaseEstimator):
         self.split_fit_on = split_fit_on
         self.split_transform_on = split_transform_on
         self.param_grid = [None] if param_grid is None else ParameterGrid(param_grid)
+        self.n_jobs = n_jobs
 
         return
-
-    @staticmethod
-    def _test_single_split(
-                            pipeline:PipelineDD,
-                            train_data:typing.Dict[str, np.ndarray],
-                            test_data:typing.Dict[str, np.ndarray],
-                            ns:int,
-                            metrics:typing.Dict[str, typing.Callable],
-                            )->typing.List[typing.Dict[str,typing.Union[int, float]]]:
-        '''
-        Testing the whole pipeline, on a single train and test data.
-        '''
-
-        pipeline.fit(train_data)
-        _, out_data = pipeline.predict(train_data, return_data_dict=True)
-        train_y_out = out_data['y']
-
-        predictions, out_data = pipeline.predict(test_data, return_data_dict=True)
-        labels = out_data['y']
-        results_temp = [
-                        {
-                        'metric': metric, 
-                        'value': func(labels, predictions),
-                        'split_number': ns,
-                        #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
-                        #'test_positve': np.sum(labels)/labels.shape[0],
-                        } 
-                        for metric, func in metrics.items()
-                        ]
-        
-        return results_temp
-    
 
     def _test_pipeline(self,
                     X,
@@ -229,25 +209,61 @@ class PipelineSearchCV(BaseEstimator):
                         'train_id': uuid.uuid4(),
                         }
 
-        for ns, (train_idx, test_idx) in enumerate(self.cv.split(*[ X[split_data] 
-                                                    for split_data in self.split_fit_on ])):
+        # defining testing function to run in parallel
+        def _test_pipeline_parallel(
+                                    X,
+                                    train_idx,
+                                    test_idx,
+                                    ns,
+                                    split_transform_on,
+                                    pipeline,
+                                    metrics,
+                                    ):
             # data to split on
-            train_data = { split_data:X[split_data][train_idx] for split_data in self.split_transform_on }
-            test_data = { split_data:X[split_data][test_idx] for split_data in self.split_transform_on }
+            train_data = { split_data:X[split_data][train_idx] for split_data in split_transform_on }
+            test_data = { split_data:X[split_data][test_idx] for split_data in split_transform_on }
             # other data
             train_data.update({ k: v for k, v in X.items() if k not in train_data })
             test_data.update({ k: v for k, v in X.items() if k not in test_data })
+            results_single_split = train_data
+            
+            pipeline.fit(train_data)
+            _, out_data = pipeline.predict(train_data, return_data_dict=True)
+            train_y_out = out_data['y']
 
-            # fitting and predicting
-            results_temp['metrics'].extend(self._test_single_split(
-                                            pipeline=pipeline,
-                                            train_data=train_data,
-                                            test_data=test_data,
-                                            ns=ns,
-                                            metrics=self.metrics,
-                                            ))
+            predictions, out_data = pipeline.predict(test_data, return_data_dict=True)
+            labels = out_data['y']
+            results_single_split = [
+                                    {
+                                    'metric': metric, 
+                                    'value': func(labels, predictions),
+                                    'split_number': ns,
+                                    #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
+                                    #'test_positve': np.sum(labels)/labels.shape[0],
+                                    } 
+                                    for metric, func in metrics.items()
+                                    ]
 
-            self.tqdm_progress.update(1)
+            return results_single_split
+        
+        f_parallel = functools.partial(_test_pipeline_parallel, 
+                                X=X, 
+                                split_transform_on=self.split_transform_on,
+                                pipeline=pipeline,
+                                metrics=self.metrics,
+        )
+
+        results_single_split = joblib.Parallel(n_jobs=self.n_jobs)(joblib.delayed(f_parallel)(
+                                train_idx=train_idx,
+                                test_idx=test_idx,
+                                ns=ns,
+                                ) for ns, (train_idx, test_idx) 
+                                    in enumerate(list(self.cv.split(*[ X[split_data] 
+                                    for split_data in self.split_fit_on ]))))
+        
+        for rss in results_single_split:
+            results_temp['metrics'].extend(rss)
+        self.tqdm_progress.update(self.cv.get_n_splits())
 
         return results_temp
 
@@ -285,7 +301,7 @@ class PipelineSearchCV(BaseEstimator):
     def fit(self,
             X:typing.Dict[str, np.ndarray],
             y=None,
-            ):
+            ) -> pd.DataFrame:
         '''
         This function fits and predicts the pipelines, 
         with the optional parameters and splitting 
@@ -301,6 +317,14 @@ class PipelineSearchCV(BaseEstimator):
         
         - ```y```: ```None```:
             Ignored.
+        
+        Returns
+        ---------
+        - ```results```: ```pandas.DataFrame```:
+            The results, with columns:
+            ```['pipeline', 'split_number', 'metric', 
+            'value', 'splitter', 'params', 'train_id', 
+            'param_updates']```
         
         
         
@@ -320,7 +344,6 @@ class PipelineSearchCV(BaseEstimator):
                                                 pipeline_name=pipeline_name,
                                                 )
             results = pd.concat([results, results_pipeline])
-
         self.tqdm_progress.close()
 
         results = results[[
