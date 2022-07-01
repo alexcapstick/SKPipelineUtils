@@ -6,9 +6,11 @@ from .transformer import *
 from .utils import *
 from .progress import *
 from .pipeline_searcher import *
+from .metric import *
 
 
 __all__ = [
+    'positive_split',
     'train_test_group_split',
     'SKModelWrapperDD',
     'PipelineSearchCV',
@@ -20,6 +22,5 @@ __all__ = [
     'DropNaNRowsDD',
     'StandardGroupScalerDD',
     'NumpyToDict',
-
 
 ]

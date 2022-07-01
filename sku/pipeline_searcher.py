@@ -18,6 +18,7 @@ from .progress import tqdm_style
 
 
 
+
 class PipelineSearchCV(BaseEstimator):
     def __init__(self,
                     pipeline_names:typing.List[str],
@@ -172,6 +173,7 @@ class PipelineSearchCV(BaseEstimator):
 
     def _test_pipeline(self,
                     X,
+                    y,
                     pipeline_name,
                     pipeline_update_params=None,
                     ):
@@ -212,6 +214,7 @@ class PipelineSearchCV(BaseEstimator):
         # defining testing function to run in parallel
         def _test_pipeline_parallel(
                                     X,
+                                    y,
                                     train_idx,
                                     test_idx,
                                     ns,
@@ -228,26 +231,41 @@ class PipelineSearchCV(BaseEstimator):
             results_single_split = train_data
             
             pipeline.fit(train_data)
-            _, out_data = pipeline.predict(train_data, return_data_dict=True)
-            train_y_out = out_data['y']
+            predictions_train, out_data_train = pipeline.predict(train_data, return_data_dict=True)
+            labels_train = out_data_train[y]
 
-            predictions, out_data = pipeline.predict(test_data, return_data_dict=True)
-            labels = out_data['y']
+            predictions_test, out_data_test = pipeline.predict(test_data, return_data_dict=True)
+            labels_test = out_data_test[y]
+
             results_single_split = [
                                     {
                                     'metric': metric, 
-                                    'value': func(labels, predictions),
+                                    'value': func(labels_test, predictions_test),
                                     'split_number': ns,
+                                    'train_or_test': 'test',
                                     #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
                                     #'test_positve': np.sum(labels)/labels.shape[0],
                                     } 
                                     for metric, func in metrics.items()
                                     ]
 
+            results_single_split.extend([
+                                        {
+                                        'metric': metric, 
+                                        'value': func(labels_train, predictions_train),
+                                        'split_number': ns,
+                                        'train_or_test': 'train',
+                                        #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
+                                        #'test_positve': np.sum(labels)/labels.shape[0],
+                                        } 
+                                        for metric, func in metrics.items()
+                                        ])
+
             return results_single_split
         
         f_parallel = functools.partial(_test_pipeline_parallel, 
                                 X=X, 
+                                y=y,
                                 split_transform_on=self.split_transform_on,
                                 pipeline=pipeline,
                                 metrics=self.metrics,
@@ -269,6 +287,7 @@ class PipelineSearchCV(BaseEstimator):
 
     def _grid_test_pipeline(self,
                             X,
+                            y,
                             pipeline_name,
                             ):
         '''
@@ -280,6 +299,7 @@ class PipelineSearchCV(BaseEstimator):
         for g in self.param_grid:
             results_temp = self._test_pipeline(
                                                 X=X,
+                                                y=y,
                                                 pipeline_name=pipeline_name,
                                                 pipeline_update_params=g,
                                                 )
@@ -300,7 +320,7 @@ class PipelineSearchCV(BaseEstimator):
 
     def fit(self,
             X:typing.Dict[str, np.ndarray],
-            y=None,
+            y:str, 
             ) -> pd.DataFrame:
         '''
         This function fits and predicts the pipelines, 
@@ -315,8 +335,10 @@ class PipelineSearchCV(BaseEstimator):
             The data dictionary that will be used to run
             the experiments.
         
-        - ```y```: ```None```:
-            Ignored.
+        - ```y``` : ```str```:
+            Please either pass a string, which corresponds to the 
+            key in ```X``` which contains the labels, or pass
+            the labels themselves.
         
         Returns
         ---------
@@ -341,6 +363,7 @@ class PipelineSearchCV(BaseEstimator):
         for pipeline_name in self.pipeline_names:
             results_pipeline = self._grid_test_pipeline(
                                                 X=X,
+                                                y=y,
                                                 pipeline_name=pipeline_name,
                                                 )
             results = pd.concat([results, results_pipeline])
@@ -349,6 +372,7 @@ class PipelineSearchCV(BaseEstimator):
         results = results[[
                             'pipeline', 
                             'split_number', 
+                            'train_or_test',
                             'metric', 
                             'value', 
                             'splitter', 

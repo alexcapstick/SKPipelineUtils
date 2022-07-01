@@ -32,7 +32,6 @@ class PipelineDD(Pipeline):
             Please either pass a string, which corresponds to the 
             key in ```X``` which contains the labels, or pass
             the labels themselves.
-            Defaults to ```None```.
 
         - ```sample_weight``` : ```array-like```:
             If not None, this argument is passed as ``sample_weight`` keyword
