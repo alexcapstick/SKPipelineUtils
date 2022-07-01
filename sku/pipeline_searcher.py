@@ -337,8 +337,7 @@ class PipelineSearchCV(BaseEstimator):
         
         - ```y``` : ```str```:
             Please either pass a string, which corresponds to the 
-            key in ```X``` which contains the labels, or pass
-            the labels themselves.
+            key in ```X``` which contains the labels.
         
         Returns
         ---------
