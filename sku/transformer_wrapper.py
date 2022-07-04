@@ -27,7 +27,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         ---------
         
         - ```transformer```: ```typing.Any```: 
-            The model to wrap. This model must have
+            The transformer to wrap. This transformer must have
             both ```.fit(X, y)``` and ```.transform(X)```.
             An example would be a custom transformer
             that uses data dictionaries.
@@ -87,7 +87,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             Defaults to ```False```.
 
         - ```*kwargs```: ```typing.Any```:
-            Keyword arguments given to the model.
+            Keyword arguments given to the transformer.
         
         '''
 
@@ -192,14 +192,19 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         
         - ```X```: ```typing.Dict[str, np.ndarray]```: 
             A dictionary containing the data.
+            If ```X``` is a ```numpy.ndarray```, then 
+            the ```fit_on``` arguments will be ignored
+            and the transformer will be passed ```.fit(X,y)```.
+            In this case, consider using sklearn.
             For example:
             ```
             X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
             ```.
         
         - ```y```: ```None```, optional:
-            Ignored. Please pass labels in the dictionary to 
-            ```X```.
+            Ignored unless ```X``` is a ```numpy.ndarray```.
+            If using a data dictionary, please pass labels 
+            in the dictionary to ```X```.
             Defaults to ```None```.
         
         
@@ -217,6 +222,13 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             fit_on_ = self.fit_on
 
         self.fitted_transformers = []
+        
+        if type(X) == np.ndarray:
+            transformer_init = self.transformer(**self._params_transformer)
+            transformer_init.fit(X, y)
+            self.fitted_transformers.append(transformer_init)
+            return self
+
         for keys in fit_on_:
             transformer_init = self.transformer(**self._params_transformer)
             data = [X[key] for key in keys]
@@ -236,6 +248,12 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         
         - ```X```: ```typing.Dict[str, np.ndarray]```: 
             A dictionary containing the data.
+            If ```X``` is a ```numpy.ndarray```, then 
+            the ```transform_on``` arguments will be ignored
+            and the model will be passed ```.transform(X)```.
+            In this case, consider using sklearn. In addition,
+            this will be performed on the first fitted model 
+            if many are fitted.
             For example:
             ```
             X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
@@ -261,7 +279,10 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
 
         if self.fitted_transformers is None:
             raise TypeError('Please fit the trasform first.')
-        
+
+        if type(X) == np.ndarray:
+            return self.fitted_transformers[0].transform(X)
+
         for nk, keys in enumerate(transform_on_):
             data = [X_out[key] for key in keys]
             outputs = (self.fitted_transformers[nk%len(self.fitted_transformers)]

@@ -165,14 +165,19 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         
         - ```X```: ```typing.Dict[str, np.ndarray]```: 
             A dictionary containing the data.
+            If ```X``` is a ```numpy.ndarray```, then 
+            the ```fit_on``` arguments will be ignored
+            and the model will be passed ```.fit(X,y)```.
+            In this case, consider using sklearn.
             For example:
             ```
             X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
             ```.
         
         - ```y```: ```None```, optional:
-            Ignored. Please pass labels in the dictionary to 
-            ```X```.
+            Ignored unless ```X``` is a ```numpy.ndarray```.
+            If using a data dictionary, please pass labels 
+            in the dictionary to ```X```.
             Defaults to ```None```.
         
         
@@ -191,6 +196,12 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             fit_on_ = self.fit_on
 
         self.fitted_models = []
+        if type(X) == np.ndarray:
+            model_init = self.model(**self._params_model)
+            model_init.fit(X, y)
+            self.fitted_models.append(model_init)
+            return self
+
         for keys in fit_on_:
             model_init = self.model(**self._params_model)
             data = [X[key] for key in keys]
@@ -213,6 +224,12 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         
         - ```X```: ```typing.Dict[str, np.ndarray]```: 
             A dictionary containing the data.
+            If ```X``` is a ```numpy.ndarray```, then 
+            the ```predict_on``` arguments will be ignored
+            and the model will be passed ```.predict(X)```.
+            In this case, consider using sklearn. In addition,
+            this will be performed on the first fitted model 
+            if many are fitted.
             For example:
             ```
             X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
@@ -221,7 +238,10 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         - ```return_data_dict```: ```bool```, optional: 
             Whether to return the ground truth with the output.
             This is useful if this model was part of a pipeline
-            in which the labels are altered.
+            in which the labels are altered. This is ignored
+            if ```X``` is a ```numpy.ndarray```
+            Defaults to ```False```.
+
         
         Returns
         --------
@@ -247,6 +267,9 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             predict_on_ = [self.predict_on]
         else:
             predict_on_ = self.predict_on
+
+        if type(X) == np.ndarray:
+            return self.fitted_models[0].predict(X)
 
         for nk, keys in enumerate(predict_on_):
             data = [X[key] for key in keys]
@@ -275,6 +298,12 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         
         - ```X```: ```typing.Dict[str, np.ndarray]```: 
             A dictionary containing the data.
+            If ```X``` is a ```numpy.ndarray```, then 
+            the ```predict_on``` arguments will be ignored
+            and the model will be passed ```.predict_proba(X)```.
+            In this case, consider using sklearn. In addition,
+            this will be performed on the first fitted model 
+            if many are fitted.
             For example:
             ```
             X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
@@ -283,7 +312,10 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         - ```return_data_dict```: ```bool```, optional: 
             Whether to return the ground truth with the output.
             This is useful if this model was part of a pipeline
-            in which the labels are altered.
+            in which the labels are altered. This is ignored
+            if ```X``` is a ```numpy.ndarray```
+            Defaults to ```False```.
+
         
         Returns
         --------
@@ -309,6 +341,9 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             predict_on_ = [self.predict_on]
         else:
             predict_on_ = self.predict_on
+
+        if type(X) == np.ndarray:
+            return self.fitted_models[0].predict_proba(X)
 
         for nk, keys in enumerate(predict_on_):
             data = [X[key] for key in keys]

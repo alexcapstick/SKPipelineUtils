@@ -228,7 +228,6 @@ class PipelineSearchCV(BaseEstimator):
             # other data
             train_data.update({ k: v for k, v in X.items() if k not in train_data })
             test_data.update({ k: v for k, v in X.items() if k not in test_data })
-            results_single_split = train_data
             
             pipeline.fit(train_data)
             predictions_train, out_data_train = pipeline.predict(train_data, return_data_dict=True)
