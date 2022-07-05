@@ -7,7 +7,7 @@ import typing
 
 from .preprocessing import StandardGroupScaler
 from .transformer_wrapper import SKTransformerWrapperDD
-from .utils import partialclass, partialclass_pickleable
+from .utils import partialclass_pickleable
 
 class _DropNaNRowsDD:
     def fit(self, *args):
@@ -72,7 +72,7 @@ class _DropNaNRowsDD:
         return output
 
 
-
+# this was not pickle-able
 #DropNaNRowsDD = partialclass(SKTransformerWrapperDD, 
 #                                transformer=_DropNaNRowsDD, 
 #                                all_key_transform=True)
@@ -83,11 +83,17 @@ DropNaNRowsDD = partialclass_pickleable(
                                             transformer=_DropNaNRowsDD, 
                                             all_key_transform=True)
 
+# this was not pickle-able
+#StandardGroupScalerDD = partialclass(SKTransformerWrapperDD, 
+#                                all_key_transform=False)
+#                                transformer=StandardGroupScaler, 
 
 
-StandardGroupScalerDD = partialclass(SKTransformerWrapperDD, 
-                                transformer=StandardGroupScaler, 
-                                all_key_transform=False)
+StandardGroupScalerDD = partialclass_pickleable(
+                                                name='StandardGroupScalerDD',
+                                                cls=SKTransformerWrapperDD, 
+                                                transformer=StandardGroupScaler, 
+                                                all_key_transform=False)
 
 
 
