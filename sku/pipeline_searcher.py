@@ -275,12 +275,15 @@ class PipelineSearchCV(BaseEstimator):
                                 test_idx=test_idx,
                                 ns=ns,
                                 ) for ns, (train_idx, test_idx) 
-                                    in enumerate(list(self.cv.split(*[ X[split_data] 
-                                    for split_data in self.split_fit_on ]))))
+                                    in enumerate(
+                                        list(
+                                            self.cv.split(*[ X[split_data] 
+                                                for split_data in self.split_fit_on 
+                                            ]))))
         
         for rss in results_single_split:
             results_temp['metrics'].extend(rss)
-        self.tqdm_progress.update(self.cv.get_n_splits())
+        self.tqdm_progress.update(self.cv.get_n_splits(groups=X[self.split_fit_on[-1]]))
 
         return results_temp
 
@@ -351,7 +354,10 @@ class PipelineSearchCV(BaseEstimator):
         '''
 
         self.tqdm_progress = tqdm.tqdm(
-                                        total=len(self.pipeline_names)*self.cv.get_n_splits()*len(self.param_grid), 
+                                        total=(len(self.pipeline_names)
+                                                *self.cv.get_n_splits(groups=X[self.split_fit_on[-1]])
+                                                *len(self.param_grid)
+                                                ), 
                                         desc='Searching', 
                                         disable=not self.verbose,
                                         **tqdm_style,
