@@ -18,9 +18,10 @@ __all__ = [
     'PipelineDD',
     'pipeline_constructor',
     'StandardGroupScaler',
+    'Flatten',
     'tqdm_style',
     'SKTransformerWrapperDD',
     'DropNaNRowsDD',
     'StandardGroupScalerDD',
     'NumpyToDict',
-]
+    ]

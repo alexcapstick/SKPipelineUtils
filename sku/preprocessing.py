@@ -6,6 +6,7 @@ import typing
 import copy
 import warnings
 import numpy as np
+from sklearn.feature_selection import SelectFdr
 
 
 
@@ -217,3 +218,118 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
 
         self.fit(X=X, groups=groups, y=y)
         return self.transform(X=X, groups=groups, y=y)
+
+
+class Flatten(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
+    def __init__(
+        self,
+        start_dim:int=0,
+        end_dim:int=-1,
+        copy=False,
+        )->None:
+        '''
+        This class allows you to flatten an array inside a pipeline.
+        This class was implemented to mirror the behaviour in 
+        `https://pytorch.org/docs/stable/generated/torch.flatten.html`.
+        
+        
+        Examples
+        ---------
+        ```
+        >>> flat = Flatten(start_dim=1, end_dim=-1)
+        >>> flat.fit(None, None) # ignored
+        >>> flat.transform(
+                [[[1, 2],
+                  [3, 4]],
+                 [[5, 6],
+                  [7, 8]]]
+                )
+        [[1,2,3,4],
+         [5,6,7,8]]
+        ```
+        
+        Arguments
+        ---------
+        
+        - `start_dim`: `int`, optional:
+            The first dim to flatten. 
+            Defaults to `0`.
+        
+        - `end_dim`: `int`, optional:
+            The last dim to flatten. 
+            Defaults to `-1`.
+        
+        - `copy`: `bool`, optional:
+            Whether to return a copied version
+            of the array during the transform
+            method.
+            Defaults to `False`.
+        
+        '''
+        if end_dim != -1: 
+            raise NotImplementedError('Currently only end_dim = -1 is supported')
+        self.start_dim = start_dim
+        self.end_dim = end_dim
+        self.copy = copy
+        return
+    
+    def fit(
+        self,
+        X:np.ndarray=None, 
+        y:None=None, 
+        ) -> Flatten:
+        '''
+        This function is required for the pipelines to work, but is ignored.
+        
+        Arguments
+        ---------
+        
+        - ```X```: 
+            Ignored.
+            Defaults to ```None```.
+
+        - ```y```:
+            Igorned. 
+            Defaults to ```None```.
+        
+
+        Returns
+        --------
+        
+        - ```self```:
+            The fitted scaler.
+        
+        
+        '''
+        return self
+    
+    def transform(
+        self,
+        X:np.ndarray,
+        )->np.ndarray:
+        '''
+        This will transform the array by returning a flattened
+        version.
+        
+        
+        Arguments
+        ---------
+        
+        - `X`: `np.ndarray`: 
+            The array to be flattened.
+        
+        Returns
+        --------
+        
+        - `out`: `np.ndarray` : 
+            The flattened array.
+        
+        
+        '''
+        if self.copy:
+            X_out = copy.deepcopy(X)
+        else:
+            X_out = X
+        new_shape = [X_out.shape[i] for i in range(self.start_dim)]
+        return X_out.reshape(*new_shape, -1)
+

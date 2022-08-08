@@ -10,6 +10,14 @@ from .transformer_wrapper import SKTransformerWrapperDD
 from .utils import partialclass_pickleable
 
 class _DropNaNRowsDD:
+    '''
+    This class allows you to remove NaN rows
+    in data.
+
+    Note: This should not be used in a pipeline, otherwise the 
+    rows calculated to be removed in training data, will
+    attempt to be removed in the test data.
+    '''
     def fit(self, *args):
         '''
         Collect the rows that will need
