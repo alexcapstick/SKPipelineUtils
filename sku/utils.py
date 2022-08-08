@@ -46,6 +46,7 @@ def partialclass(cls, *args, **kwds):
     return NewCls
 
 
+
 def partialclass_pickleable(name, cls, *args, **kwds):
     # from https://stackoverflow.com/a/58039373/19451559
     new_cls = type(name, (cls,), {

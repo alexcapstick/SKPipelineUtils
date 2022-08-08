@@ -3,14 +3,36 @@ import typing
 import numpy as np
 import sklearn
 from sklearn.pipeline import Pipeline
-
-
+from .transformer_wrapper import SKTransformerWrapperDD
+from .model_wrapper import SKModelWrapperDD
+import warnings
 
 class PipelineDD(Pipeline):
-    def score(self, 
-                X:typing.Dict[str, np.ndarray], 
-                y:typing.Union[str, np.ndarray], 
-                sample_weight=None):
+    
+    def transform(
+        self, 
+        X:typing.Dict[str, np.ndarray],
+        ) -> typing.Dict[str, np.ndarray]:
+
+        X_copy = copy.deepcopy(X)
+        passed_predict = False
+        for _, name, layer in self._iter():
+            if hasattr(layer, 'transform'):
+                if passed_predict:
+                    warnings.warn(f'A non-transform ({name}) has been passed, '\
+                        'but the transforms have not been exhausted.')
+                X_copy = layer.transform(X_copy)
+            else:
+                passed_predict = True
+
+        return X_copy
+
+    def score(
+        self, 
+        X:typing.Dict[str, np.ndarray], 
+        y:typing.Union[str, np.ndarray], 
+        sample_weight=None,
+        ):
         '''
         Transform the data, and apply ```score``` with the final estimator.
         Call ```transform``` of each transformer in the pipeline. The transformed
@@ -66,9 +88,10 @@ class PipelineDD(Pipeline):
 
 
 def pipeline_constructor(
-                            name:str, 
-                            name_to_object:typing.Dict[str, sklearn.base.BaseEstimator], 
-                            **pipeline_kwargs) -> PipelineDD:
+    name:str, 
+    name_to_object:typing.Dict[str, sklearn.base.BaseEstimator], 
+    **pipeline_kwargs,
+    ) -> PipelineDD:
     '''
     A function that constructs a pipeline from a string
     of pipeline keys and a dictionary mapping the keys to 
