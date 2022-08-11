@@ -60,11 +60,6 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
             the array that requires flattening.
             Defaults to `0`.
         
-        - `estimator_kwargs`: optional:
-            The keywords that will be passed
-            to the estimator init function.
-            Defaults to `{}`.
-        
         - `unflatten_transform`: `bool`, optional:
             Return an unflattened version of the
             transformed array. If the output
@@ -73,6 +68,11 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
             is a list or tuple, then the `flatten_idx` of
             the output will be unflattened.
             Defaults to `True`.
+
+        - `estimator_kwargs`: optional:
+            The keywords that will be passed
+            to the estimator init function.
+            Defaults to `{}`.
 
         '''
         
