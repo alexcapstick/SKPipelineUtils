@@ -1,3 +1,4 @@
+from flatten_wrapper import *
 from .metric import *
 from .model_selection import *
 from .model_wrapper import *
@@ -11,14 +12,16 @@ from .utils import *
 
 
 __all__ = [
+    'FlattenWrapper'
     'positive_split',
     'train_test_group_split',
     'SKModelWrapperDD',
     'PipelineSearchCV',
     'PipelineDD',
     'pipeline_constructor',
-    'StandardGroupScaler',
     'Flatten',
+    'FlattenStandardScaler',
+    'StandardGroupScaler',
     'tqdm_style',
     'SKTransformerWrapperDD',
     'DropNaNRowsDD',

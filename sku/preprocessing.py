@@ -6,9 +6,13 @@ import typing
 import copy
 import warnings
 import numpy as np
-from sklearn.feature_selection import SelectFdr
 
+from sklearn.preprocessing import StandardScaler
 
+from aml.preprocessing.transformation_functions import flatten
+
+from .flatten_wrapper import FlattenWrapper
+from .utils import partialclass_pickleable
 
 class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
     def __init__(self):
@@ -70,7 +74,7 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         Returns
         --------
         
-        - ```self```:
+        - ```self```: `sku.StandardGroupScaler`:
             The fitted scaler.
         
         
@@ -220,6 +224,17 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         return self.transform(X=X, groups=groups, y=y)
 
 
+
+
+FlattenStandardScaler = partialclass_pickleable(
+                            name='FlattenWrapper',
+                            cls=FlattenWrapper,
+                            estimator=StandardScaler, 
+                            unflatten_transform=True,
+                            )
+
+
+
 class Flatten(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
     def __init__(
         self,
@@ -330,6 +345,158 @@ class Flatten(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
             X_out = copy.deepcopy(X)
         else:
             X_out = X
-        new_shape = [X_out.shape[i] for i in range(self.start_dim)]
-        return X_out.reshape(*new_shape, -1)
+        return flatten(
+                X_out, 
+                start_dim=self.start_dim, 
+                end_dim=self.end_dim, 
+                copy=self.copy,
+                )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ----------------------------------------------------- 
+
+
+
+
+
+class FlattenStandardScalerOld(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
+    def __init__(
+        self,
+        start_dim:int=1,
+        end_dim:int=-1,
+        ) -> None:
+        '''
+        This class allows you to scale the data to 0 mean and unit standard 
+        deviation, based on statistics calculated over a flattened version 
+        of the array. The `start_dim` and `end_dim` allow you to 
+        choose where to flatten the array. By default, the flattening
+        will allow for mean values to calculated over an array 
+        of shape (in_shape[0], -1). Please see the flattening operations
+        in `aml.preprocessing.transformation_functions.flatten` to 
+        understand the arguments `start_dim` and `end_dim`.
+        
+        
+        Examples
+        ---------
+
+
+        Arguments
+        ---------
+        
+        - `start_dim`: `int`, optional:
+            The first dim to flatten. 
+            Defaults to `0`.
+        
+        - `end_dim`: `int`, optional:
+            The last dim to flatten. 
+            Defaults to `-1`.
+        
+        '''
+        
+        self.start_dim = start_dim
+        self.end_dim = end_dim
+
+        self.scaler = None
+        
+        return
+    
+    def fit(
+        self, 
+        X:np.ndarray, 
+        y:typing.Union[np.ndarray, None]=None, 
+        ) -> FlattenStandardScalerOld:
+        '''
+        Compute the mean and std to be used for later scaling.
+
+
+        Arguments
+        ---------
+        
+        - `X`: `np.ndarray`: 
+            The data used to compute the mean and standard deviation used for later
+            scaling along the features axis. This should be of shape 
+            `(n_samples, n_features)`.
+
+        - `y`: `typing.Union[np.ndarray, None]`, optional:
+            Igorned. 
+            Defaults to `None`.
+
+
+        Returns
+        --------
+        
+        - `self`: `FlattenStandardScalerOld`:
+            The fitted scaler.
+        
+        
+        '''
+        
+        self.scaler = StandardScaler()
+        self.scaler.fit(
+            flatten(
+                X, 
+                start_dim=self.start_dim, 
+                end_dim=self.end_dim, 
+                copy=False,
+                )
+            )
+
+        return self
+
+    def transform(self, 
+                    X:np.ndarray, 
+                    ) -> np.ndarray:
+        '''
+        Perform standardization on data.
+
+        
+        Arguments
+        ---------
+        
+        - `X`: `np.ndarray`: 
+            The data used to scale along the features axis. This should be of shape 
+            `(n_samples, n_features)`.
+       
+
+        Returns
+        --------
+        
+        - `X_norm`: `np.ndarray`: 
+            The transformed version of `X`.
+        
+        
+        '''
+        
+        assert not self.scaler is None, \
+            "Please fit this class before calling the transform method."
+        X_norm_shape = X.shape
+        X_norm = self.scaler.transform(
+                    flatten(
+                        X, 
+                        start_dim=self.start_dim, 
+                        end_dim=self.end_dim, 
+                        copy=False,
+                        )
+                    )
+        
+        X_norm = X_norm.reshape(*X_norm_shape)
+
+        return X_norm
+
 
