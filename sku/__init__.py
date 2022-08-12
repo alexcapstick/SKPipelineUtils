@@ -1,4 +1,4 @@
-from flatten_wrapper import *
+from .flatten_wrapper import *
 from .metric import *
 from .model_selection import *
 from .model_wrapper import *
