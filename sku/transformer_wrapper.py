@@ -86,7 +86,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             ```
             Defaults to ```False```.
 
-        - ```*kwargs```: ```typing.Any```:
+        - ```**kwargs```: ```typing.Any```:
             Keyword arguments given to the transformer.
         
         '''
@@ -121,8 +121,8 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         else:
             parameters = list(self.get_params().keys())
             return sorted([p.name for p in parameters])
-        
-    def get_params(self,deep=True) -> dict:
+
+    def get_params(self, deep=True) -> dict:
         '''
         Overrides sklearn function.
         
