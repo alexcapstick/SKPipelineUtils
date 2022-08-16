@@ -233,6 +233,99 @@ FlattenStandardScaler = partialclass_pickleable(
                             unflatten_transform=True,
                             )
 
+flatten_standard_scaler_doc = {
+    '__init__': (
+        '''
+        This class allows you to scale the data to 0 mean and unit standard 
+        deviation, based on statistics calculated over a flattened version 
+        of the array. The `start_dim` and `end_dim` allow you to 
+        choose where to flatten the array. By default, the flattening
+        will allow for mean values to calculated over an array 
+        of shape (in_shape[0], -1). Please see the flattening operations
+        in `aml.preprocessing.transformation_functions.flatten` to 
+        understand the arguments `start_dim` and `end_dim`.
+        
+        
+        Examples
+        ---------
+
+
+        Arguments
+        ---------
+        
+        - `start_dim`: `int`, optional:
+            The first dim to flatten. 
+            Defaults to `0`.
+        
+        - `end_dim`: `int`, optional:
+            The last dim to flatten. 
+            Defaults to `-1`.
+        
+        '''),
+
+    'fit': (
+        '''
+        Compute the mean and std to be used for later scaling.
+
+
+        Arguments
+        ---------
+        
+        - `X`: `np.ndarray`: 
+            The data used to compute the mean and standard deviation used for later
+            scaling along the features axis. This should be of shape 
+            `(n_samples, n_features)`.
+
+        - `y`: `typing.Union[np.ndarray, None]`, optional:
+            Igorned. 
+            Defaults to `None`.
+
+
+        Returns
+        --------
+        
+        - `self`: `FlattenStandardScalerOld`:
+            The fitted scaler.
+        
+        
+        '''),
+
+    'transform': (
+        '''
+        Perform standardization on data.
+
+        
+        Arguments
+        ---------
+        
+        - `X`: `np.ndarray`: 
+            The data used to scale along the features axis. This should be of shape 
+            `(n_samples, n_features)`.
+       
+
+        Returns
+        --------
+        
+        - `X_norm`: `np.ndarray`: 
+            The transformed version of `X`.
+        
+        
+        '''),
+}
+
+FlattenStandardScaler.__init__.__doc__ = flatten_standard_scaler_doc['__init__']
+FlattenStandardScaler.fit.__doc__ = flatten_standard_scaler_doc['fit']
+FlattenStandardScaler.transform.__doc__ = flatten_standard_scaler_doc['transform']
+
+
+
+
+
+
+
+
+
+
 
 
 class Flatten(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
@@ -370,7 +463,6 @@ class Flatten(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
 
 
 # ----------------------------------------------------- 
-
 
 
 
