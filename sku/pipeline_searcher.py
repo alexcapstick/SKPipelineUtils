@@ -10,7 +10,7 @@ from sklearn.base import BaseEstimator
 from sklearn.model_selection import ParameterGrid
 
 from .pipeline import PipelineDD, pipeline_constructor
-from .progress import tqdm_style
+from .progress import tqdm_style, ProgressParallel
 
 
 
@@ -134,7 +134,7 @@ class PipelineSearchCV(BaseEstimator):
             A dictionary or list of dictionaries that 
             are used as a parameter grid for testing performance
             of pipelines with multiple hyper-parameters. This should
-            be of the usual format to 
+            be of the usual format given to 
             ```sklearn.model_selection.ParameterGrid``` when 
             used with ```sklearn.pipeline.Pipeline```.
             If ```None```, then the pipeline is tested with 
@@ -270,20 +270,23 @@ class PipelineSearchCV(BaseEstimator):
                                 metrics=self.metrics,
         )
 
-        results_single_split = joblib.Parallel(n_jobs=self.n_jobs)(joblib.delayed(f_parallel)(
-                                train_idx=train_idx,
-                                test_idx=test_idx,
-                                ns=ns,
-                                ) for ns, (train_idx, test_idx) 
-                                    in enumerate(
-                                        list(
-                                            self.cv.split(*[ X[split_data] 
-                                                for split_data in self.split_fit_on 
-                                            ]))))
+        results_single_split = ProgressParallel(
+                                tqdm_bar=self.tqdm_progress, 
+                                n_jobs=self.n_jobs
+                                )(joblib.delayed(f_parallel)(
+                                    train_idx=train_idx,
+                                    test_idx=test_idx,
+                                    ns=ns,
+                                    ) for ns, (train_idx, test_idx) 
+                                        in enumerate(
+                                            list(
+                                                self.cv.split(*[ X[split_data] 
+                                                    for split_data in self.split_fit_on 
+                                                ]))))
         
         for rss in results_single_split:
             results_temp['metrics'].extend(rss)
-        self.tqdm_progress.update(self.cv.get_n_splits(groups=X[self.split_fit_on[-1]]))
+        #self.tqdm_progress.update(self.cv.get_n_splits(groups=X[self.split_fit_on[-1]]))
 
         return results_temp
 
