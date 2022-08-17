@@ -84,9 +84,11 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         if not estimator is None:
             self.estimator_init = self.estimator(**kwargs)
             if hasattr(self.estimator_init, 'get_params'):
-                self._params_estimator = self.estimator_init.get_params()
+                self._params_estimator = kwargs
+                self._params_estimator.update(**self.estimator_init.get_params())
             else:
-                self._params_estimator = get_default_args(estimator)
+                self._params_estimator = kwargs
+                self._params_estimator.update(**get_default_args(estimator))
         else:
             self.estimator_init = None
             self._params_estimator = {}
