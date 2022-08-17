@@ -79,27 +79,25 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
             Defaults to `{}`.
 
         '''
-        if not estimator is None:
-            self._params_estimator = get_default_args(estimator)
-        else:
-            self._params_estimator = {}
-        for key, value in kwargs.items():
-            self.__setattr__(key, value)
-            self._params_estimator[key] = value
 
+        self.estimator = estimator
+        if not estimator is None:
+            self.estimator_init = self.estimator(**kwargs)
+            if hasattr(self.estimator_init, 'get_params'):
+                self._params_estimator = self.estimator_init.get_params()
+            else:
+                self._params_estimator = get_default_args(estimator)
+        else:
+            self.estimator_init = None
+            self._params_estimator = {}
+
+        for key, value in self._params_estimator.items():
+            self.__setattr__(key, value)
 
         self.start_dim = start_dim
         self.end_dim = end_dim
         self.flatten_idx = flatten_idx
         self.unflatten_transform = unflatten_transform
-
-        
-        self.estimator = estimator
-        self.estimator_kwargs = kwargs
-        if not estimator is None:
-            self.estimator_init = self.estimator(**self._params_estimator)
-        else:
-            self.estimator_init = None
 
         self._params = {}
         self._params['estimator'] = self.estimator_init
@@ -109,7 +107,6 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         self._params['unflatten_transform'] = self.unflatten_transform
         
         self._params.update(**self._params_estimator)
-
 
         return
 

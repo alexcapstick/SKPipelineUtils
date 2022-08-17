@@ -1,4 +1,5 @@
 from __future__ import annotations
+from re import S
 import numpy as np
 import sklearn
 import copy
@@ -91,15 +92,32 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         
         '''
 
-        self._params_transformer = get_default_args(transformer)
-        for key, value in kwargs.items():
-            if hasattr(value, 'get_params'):
-                continue
-            self.__setattr__(key, value)
-            self._params_transformer[key] = value
-
         self.transformer = transformer
-        self.transformer_init = self.transformer(**self._params_transformer)
+        self.transformer_init = self.transformer(**kwargs)
+        self._params_transformer = kwargs
+
+        if hasattr(self.transformer_init, 'get_params'):
+            params_iterate = self.transformer_init.get_params()
+        else:
+            params_iterate = kwargs
+
+        self._params_transformer_show = {}
+        for key, value in params_iterate.items():
+            if hasattr(value, 'get_params'):
+                # if initiated
+                try:
+                    self._params_transformer_show.update(**value.get_params())
+                    value_name = type(value).__name__
+                except:
+                    self._params_transformer_show.update(**get_default_args(value))
+                    value_name = value.__name__
+                self.__setattr__(key, value_name)
+                self._params_transformer_show[key] = value_name
+            else:
+                self.__setattr__(key, value)
+                self._params_transformer_show[key] = value
+
+
         self.fit_on = fit_on
         self.transform_on = transform_on
         self.all_key_transform = all_key_transform
@@ -111,7 +129,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         self._params['transform_on'] = self.transform_on
         self._params['all_key_transform'] = self.all_key_transform
         
-        self._params.update(**self._params_transformer)
+        self._params.update(**self._params_transformer_show)
 
         return
         
@@ -119,7 +137,12 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
     def _get_param_names(self):
         """Get parameter names for the estimator"""
         if isinstance(self, type):
-            return ['transformer', 'fit_on', 'transform_on']
+            return [
+                'transformer', 
+                'fit_on', 
+                'transform_on', 
+                'all_key_transform'
+                ]
         else:
             parameters = list(self.get_params().keys())
             return sorted([p.name for p in parameters])
@@ -177,13 +200,24 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         
         '''
         for key, value in params.items():
-            if key in self._params_transformer:
+            if key in self._params_transformer_show:
                 self._params_transformer[key] = value
-                self.transformer_init = self.transformer(**self._params_transformer)
-                self._params.update(**self._params_transformer)
-                self._params['transformer'] = self.transformer_init
+                if hasattr(value, 'get_params'):
+                    # if initiated
+                    try:
+                        self._params_transformer.update(**value.get_params())
+                        value_name = type(value).__name__
+                    except:
+                        value_name = value.__name__
+                    self._params_transformer_show[key] = value_name
+                    params[key] = value_name
+                else:
+                    self._params_transformer_show[key] = value
+                self._params.update(**self._params_transformer_show)
             if key in self._params:
                 self._params[key] = value
+            self.transformer_init = self.transformer(**self._params_transformer)
+            self._params['transformer'] = self.transformer_init
         return super(SKTransformerWrapperDD, self).set_params(**params)
 
     def fit(self, 

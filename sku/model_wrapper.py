@@ -65,24 +65,43 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             Keyword arguments given to the model init.
         
         '''
-        self._params_model = get_default_args(model)
-        for key, value in kwargs.items():
-            if hasattr(value, 'get_params'):
-                continue
-            self.__setattr__(key, value)
-            self._params_model[key] = value
 
         self.model = model
+        self.model_init = self.model(**kwargs)
+        self._params_model = kwargs
+
+        if hasattr(self.model_init, 'get_params'):
+            params_iterate = self.model_init.get_params()
+        else:
+            params_iterate = kwargs
+
+        self._params_model_show = {}
+        for key, value in params_iterate.items():
+            if hasattr(value, 'get_params'):
+                # if initiated
+                try:
+                    self._params_model_show.update(**value.get_params())
+                    value_name = type(value).__name__
+                except:
+                    self._params_model_show.update(**get_default_args(value))
+                    value_name = value.__name__
+                self.__setattr__(key, value_name)
+                self._params_model_show[key] = value_name
+            else:
+                self.__setattr__(key, value)
+                self._params_model_show[key] = value
+
+
         self.fit_on = fit_on
         self.predict_on = predict_on
-        self._params = {}
-        self.model_init = self.model(**self._params_model)
         self.fitted_models = None
 
+        self._params = {}
         self._params['model'] = self.model_init
         self._params['fit_on'] = self.fit_on
         self._params['predict_on'] = self.predict_on
-        self._params.update(**self._params_model)
+
+        self._params.update(**self._params_model_show)
 
         return
 
@@ -148,13 +167,24 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         
         '''
         for key, value in params.items():
-            if key in self._params_model:
+            if key in self._params_model_show:
                 self._params_model[key] = value
-                self.model_init = self.model(**self._params_model)
-                self._params.update(**self._params_model)
-                self._params['model'] = self.model_init
+                if hasattr(value, 'get_params'):
+                    # if initiated
+                    try:
+                        self._params_model.update(**value.get_params())
+                        value_name = type(value).__name__
+                    except:
+                        value_name = value.__name__
+                    self._params_model_show[key] = value_name
+                    params[key] = value_name
+                else:
+                    self._params_model_show[key] = value
+                self._params.update(**self._params_model_show)
             if key in self._params:
                 self._params[key] = value
+            self.model_init = self.model(**self._params_model)
+            self._params['model'] = self.model_init
         return super(SKModelWrapperDD, self).set_params(**params)
 
     def fit(self, 
