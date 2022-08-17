@@ -83,7 +83,12 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
                     self._params_model_show.update(**value.get_params())
                     value_name = type(value).__name__
                 except:
-                    self._params_model_show.update(**get_default_args(value))
+                    self._params_model_show.update(
+                        **{k:v 
+                            for k,v in get_default_args(value).items() 
+                            if not k in kwargs
+                            }
+                        )
                     value_name = value.__name__
                 self.__setattr__(key, value_name)
                 self._params_model_show[key] = value_name
