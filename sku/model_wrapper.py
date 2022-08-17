@@ -67,6 +67,8 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         '''
         self._params_model = get_default_args(model)
         for key, value in kwargs.items():
+            if hasattr(value, 'get_params'):
+                continue
             self.__setattr__(key, value)
             self._params_model[key] = value
 
@@ -93,7 +95,7 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             parameters = list(self.get_params().keys())
             return sorted([p.name for p in parameters])
         
-    def get_params(self, deep:bool=True) -> dict:
+    def get_params(self=None, deep=True) -> dict:
         '''
         Overrides sklearn function.
         
@@ -116,7 +118,11 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         
         
         '''
-        return self._params
+
+        if not self is None:
+            return self._params
+        else:
+            return SKModelWrapperDD()._params
         
     def set_params(self, **params):
         '''

@@ -1,19 +1,22 @@
 from __future__ import annotations
-
 import typing
 import numpy as np
 import sklearn
 from aml.preprocessing.transformation_functions import flatten
 
+from .utils import get_default_args
+
+
+
 class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
     def __init__(
         self,
-        estimator:typing.Any,
+        estimator:typing.Any=None,
         start_dim:int=1,
         end_dim:int=-1,
         flatten_idx:int=0,
         unflatten_transform:bool=True,
-        **estimator_kwargs,
+        **kwargs,
         ) -> None:
         '''
         This class allows you to wrap any transformer or model with 
@@ -45,6 +48,7 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
             The transformer or model that
             requires a flattening of the
             before fit and transform or predict.
+            Defaults to `None`.
 
         - `start_dim`: `int`, optional:
             The first dim to flatten. 
@@ -69,25 +73,126 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
             the output will be unflattened.
             Defaults to `True`.
 
-        - `estimator_kwargs`: optional:
+        - `**kwargs`: optional:
             The keywords that will be passed
             to the estimator init function.
             Defaults to `{}`.
 
         '''
-        
+        if not estimator is None:
+            self._params_estimator = get_default_args(estimator)
+        else:
+            self._params_estimator = {}
+        for key, value in kwargs.items():
+            self.__setattr__(key, value)
+            self._params_estimator[key] = value
+
+
         self.start_dim = start_dim
         self.end_dim = end_dim
         self.flatten_idx = flatten_idx
-
-        self.estimator = estimator
-        self.estimator_kwargs = estimator_kwargs
-        self.estimator_init = None
-
         self.unflatten_transform = unflatten_transform
+
         
+        self.estimator = estimator
+        self.estimator_kwargs = kwargs
+        if not estimator is None:
+            self.estimator_init = self.estimator(**self._params_estimator)
+        else:
+            self.estimator_init = None
+
+        self._params = {}
+        self._params['estimator'] = self.estimator_init
+        self._params['start_dim'] = self.start_dim
+        self._params['end_dim'] = self.end_dim
+        self._params['flatten_idx'] = self.flatten_idx
+        self._params['unflatten_transform'] = self.unflatten_transform
+        
+        self._params.update(**self._params_estimator)
+
+
         return
-    
+
+    @classmethod
+    def _get_param_names(self):
+        """Get parameter names for the estimator"""
+        if isinstance(self, type):
+            return [
+                'estimator', 
+                'start_dim', 
+                'end_dim',
+                'flatten_idx',
+                'unflatten_transform',
+                ]
+        else:
+            parameters = list(self.get_params().keys())
+            return sorted([p.name for p in parameters])
+
+
+    def get_params(self=None, deep=True) -> dict:
+        '''
+        Overrides sklearn function.
+        
+        
+        
+        Arguments
+        ---------
+        
+        - ```deep```: ```bool```, optional:
+            Ignored. 
+            Defaults to ```True```.
+        
+        
+        
+        Returns
+        --------
+        
+        - ```out```: ```dict``` : 
+            Dictionary of parameters.
+        
+        
+        '''
+
+        if not self is None:
+            return self._params
+        else:
+            return FlattenWrapper()._params
+
+
+    def set_params(self, **params):
+        '''
+        
+        From sklearn documentation:
+        Set the parameters of this estimator.
+        The method works on simple estimators as well as on nested objects
+        (such as :class:`~sklearn.pipeline.Pipeline`). The latter have
+        parameters of the form ``<component>__<parameter>`` so that it's
+        possible to update each component of a nested object.
+        
+        Arguments
+        ---------
+        
+        - ```**params``` : ```dict```
+            Estimator parameters.
+        
+        Returns
+        ---------
+        - ```self``` : ```estimator``` instance
+            Estimator instance.
+
+        
+        '''
+        for key, value in params.items():
+            if key in self._params_estimator:
+                self._params_estimator[key] = value
+                self.estimator_init = self.estimator(**self._params_estimator)
+                self._params.update(**self._params_estimator)
+                self._params['estimator'] = self.estimator_init
+            if key in self._params:
+                self._params[key] = value
+        return super(FlattenWrapper, self).set_params(**params)
+
+
     def fit(
         self, 
         *args,
@@ -118,12 +223,13 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
                                     end_dim=self.end_dim, 
                                     copy=False,
                                     )
-        self.estimator_init = self.estimator(**self.estimator_kwargs)
+        self.estimator_init = self.estimator(**self._params_estimator)
         self.estimator_init.fit(
             *args
             )
 
         return self
+
 
     def transform(self, 
                     *args,
@@ -176,6 +282,7 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
 
         return out
 
+
     def predict(self, 
                     *args,
                     ) -> np.ndarray:
@@ -216,6 +323,7 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
             )
 
         return out
+
 
     def predict_proba(self, 
                     *args,

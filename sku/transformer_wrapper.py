@@ -93,6 +93,8 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
 
         self._params_transformer = get_default_args(transformer)
         for key, value in kwargs.items():
+            if hasattr(value, 'get_params'):
+                continue
             self.__setattr__(key, value)
             self._params_transformer[key] = value
 
@@ -122,7 +124,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             parameters = list(self.get_params().keys())
             return sorted([p.name for p in parameters])
 
-    def get_params(self, deep=True) -> dict:
+    def get_params(self=None, deep=True) -> dict:
         '''
         Overrides sklearn function.
         
@@ -145,7 +147,11 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         
         
         '''
-        return self._params
+
+        if not self is None:
+            return self._params
+        else:
+            return SKTransformerWrapperDD()._params
         
     def set_params(self, **params):
         '''
