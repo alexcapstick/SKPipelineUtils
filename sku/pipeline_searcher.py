@@ -6,6 +6,7 @@ import tqdm
 import uuid
 import joblib
 import functools
+import skopt
 
 from joblib.externals.loky import get_reusable_executor
 
@@ -18,11 +19,21 @@ from .progress import tqdm_style, ProgressParallel
 
 
 
+def _get_relevant_param_updates(pipeline_name, pipeline_update_params):
+    relevant_param_updates = {
+        k:v 
+        for k,v in pipeline_update_params.items() 
+        if k.split('__')[0] in pipeline_name
+        }
+    return relevant_param_updates
 
 
 
+###### For future: Maybe combine the LOO predictions!! Not calc metrics on separate splits
 
-class PipelineSearchCV(BaseEstimator):
+
+
+class PipelineBasicSearchCV(BaseEstimator):
     def __init__(self,
                     pipeline_names:typing.List[str],
                     name_to_object:typing.Dict[str, BaseEstimator],
@@ -30,7 +41,6 @@ class PipelineSearchCV(BaseEstimator):
                     cv=None,
                     split_fit_on:typing.List[str]=['X', 'y'],
                     split_transform_on:typing.List[str]=['X', 'y'],
-                    param_grid:typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Dict[str, typing.Any]]]=None,
                     verbose:bool=False,
                     n_jobs=1,
                     ):
@@ -39,8 +49,7 @@ class PipelineSearchCV(BaseEstimator):
         on a supervised task, reporting on the metrics given in 
         a table of results.
         Given a splitting function, it will perform cross validation
-        on these pipelines. A parameter grid can also be passed, allowing
-        the user to test multiple configurations of each pipeline.
+        on these pipelines.
 
         Example
         ---------
@@ -68,17 +77,13 @@ class PipelineSearchCV(BaseEstimator):
                     }
         splitter = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1024)
 
-        pscv = PipelineSearchCV(pipeline_names=pipeline_names,
+        pscv = PipelineBasicSearchCV(pipeline_names=pipeline_names,
                                     name_to_object=name_to_object,
                                     metrics=metrics,
                                     cv=splitter,
                                     split_fit_on=['X', 'y'],
                                     split_transform_on=['X', 'y', 'id'],
                                     verbose=True,
-                                    param_grid={
-                                                'gbt__learning_rate':[0.1, 0.01],
-                                                'gbt__max_depth':[3, 10],
-                                                },
                                     )
         X_data = {
                     'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
@@ -87,79 +92,61 @@ class PipelineSearchCV(BaseEstimator):
         results = pscv.fit(X_data)
         ```
 
-
-        
         Arguments
         ---------
 
-        - ```pipeline_names```: ```typing.List[str]```:
+        - `pipeline_names`: `typing.List[str]`:
             This is a list of strings that describe the pipelines
-            An example would be ```standard_scaler--ae--mlp```.
+            An example would be `standard_scaler--ae--mlp`.
             The objects, separated by '--' should be keys in 
-            ```name_to_object```.
+            `name_to_object`.
         
-        - ```name_to_object```: ```typing.Dict[str, BaseEstimator]```:
-            A dictionary mapping the keys in ```pipeline_names``` to
+        - `name_to_object`: `typing.Dict[str, BaseEstimator]`:
+            A dictionary mapping the keys in `pipeline_names` to
             the objects that will be used as transformers and 
             models in the pipeline.
         
-        - ```metrics```: ```typing.Dict[str, typing.Callable]```:
+        - `metrics`: `typing.Dict[str, typing.Callable]`:
             A dictionary mapping the metric names to their callable
             functions. These functions should take the form:
-            ```func(labels, predictions)```.
+            `func(labels, predictions)`.
         
-        - ```cv```: sklearn splitting class:
+        - `cv`: sklearn splitting class:
             This is the class that is used to produce the cross
             validation data. It should have the method
-            ```.split(X, y, event)```, which returns the indices
+            `.split(X, y, event)`, which returns the indices
             of the training and testing set, and the method 
-            ```get_n_splits()```, which should return the number
+            `get_n_splits()`, which should return the number
             of splits that this splitter was indended to make.
-            Defaults to ```None```.
+            Defaults to `None`.
 
-        - ```split_fit_on```: ```typing.List[str]```:
+        - `split_fit_on`: `typing.List[str]`:
             The keys corresponding to the values in 
-            the data dictionary passed in ```.fit()```
-            that the ```cv``` will take as positional
-            arguments to the ```split()``` function.
-            Defaults to ```['X', 'y']```.        
+            the data dictionary passed in `.fit()`
+            that the `cv` will take as positional
+            arguments to the `split()` function.
+            Defaults to `['X', 'y']`.        
 
-        - ```split_transform_on```: ```typing.List[str]```:
+        - `split_transform_on`: `typing.List[str]`:
             The keys corresponding to the values in 
-            the data dictionary passed in ```.fit()```
-            that the ```cv``` will split into training 
+            the data dictionary passed in `.fit()`
+            that the `cv` will split into training 
             and testing data. This allows you to 
             split data that isn't used in finding the
             splitting indices.
-            Defaults to ```['X', 'y']```.        
-
-        - ```param_grid```: ```typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Dict[str, typing.Any]]]```:
-            A dictionary or list of dictionaries that 
-            are used as a parameter grid for testing performance
-            of pipelines with multiple hyper-parameters. This should
-            be of the usual format given to 
-            ```sklearn.model_selection.ParameterGrid``` when 
-            used with ```sklearn.pipeline.Pipeline```.
-            If ```None```, then the pipeline is tested with 
-            the parameters given to the objects in 
-            ```name_to_object```.
-            All pipelines will be tested with the given parameters
-            in addition to the parameter grid passed.
-            Only those parameters relevant to a pipeline
-            will be used.
-            Defaults to ```None```.        
+            Defaults to `['X', 'y']`.               
         
-        - ```verbose```: ```bool```:
+        - `verbose`: `bool`:
             Whether to print progress as the models are being tested.
             Remeber that you might also need to change the verbose options
-            in each of the objects given in ```name_to_object```.
-            Defaults to ```False```.     
+            in each of the objects given in `name_to_object`.
+            Defaults to `False`.     
         
-        - ```n_jobs```: ```int```:
-            The number of parallel jobs. ```-1``` will run the 
+        - `n_jobs`: `int`:
+            The number of parallel jobs. `-1` will run the 
             searches on all cores, but will incur significant memory 
             and cpu cost.
-            Defaults to ```1```.     
+            Defaults to `1`.     
         
         '''
         assert not cv is None, 'Currently cv=None is not supported. '\
@@ -170,37 +157,10 @@ class PipelineSearchCV(BaseEstimator):
         self.metrics = metrics
         self.cv = cv
         self.verbose = verbose
-        self.param_grid = param_grid
         self.split_fit_on = split_fit_on
         self.split_transform_on = split_transform_on
-        
-        # building a param grid and counting number of experiments
-        self.param_grid = {pipeline_name: [None] for pipeline_name in pipeline_names}
-        if not param_grid is None:
-            self.split_runs = 0
-            # all combinations of parameters (including duplicates)
-            param_grid_all = list(ParameterGrid(param_grid))
-            
-            # de-duplicating and saving only runs relevant for each pipeline
-            for pipeline_name in pipeline_names:
-                # pipeline specific parameter grid
-                param_grid_pipeline_name = []
-                for pipeline_update_params in param_grid_all:
-                    # building a list of unique dictionaries
-                    param_grid_pipeline_name.append(
-                        frozenset(
-                            self._get_relevant_param_updates(
-                                pipeline_name=pipeline_name,
-                                pipeline_update_params=pipeline_update_params,
-                                ).items()
-                            )
-                        )
-                param_grid_pipeline_name = frozenset(param_grid_pipeline_name)
-                self.param_grid[pipeline_name].extend(list(map(dict, param_grid_pipeline_name)))
-                # counting number of runs for that pipeline
-                self.split_runs += len(self.param_grid[pipeline_name])
-        else:
-            self.split_runs = len(pipeline_names)
+
+        self.split_runs = len(pipeline_names)
         self.n_jobs = n_jobs
 
         return
@@ -302,7 +262,336 @@ class PipelineSearchCV(BaseEstimator):
 
         return results_single_split
 
-    def _grid_test_pipeline(self,
+    def _param_test_pipeline(self,
+                            X,
+                            y,
+                            pipeline_name,
+                            ):
+        '''
+        Testing the whole pipeline, over the splits. This
+        should be overwritten when using param grids.
+        '''
+
+        results_pipeline = pd.DataFrame()
+
+        pipeline = pipeline_constructor(pipeline_name,
+                    name_to_object=self.name_to_object,
+                    verbose=False)
+        results_temp = {
+                        'pipeline': pipeline_name,
+                        'metrics': [],
+                        'splitter': type(self.cv).__name__,
+                        'params': pipeline.get_params(),
+                        'param_updates': None,
+                        'train_id': uuid.uuid4(),
+                        }
+        
+        # getting and saving results
+        results_temp_metrics = self._test_pipeline(
+                                            X=X,
+                                            y=y,
+                                            pipeline=pipeline,
+                                            )
+        for rtm in results_temp_metrics:
+            results_temp['metrics'].extend(rtm)
+
+        results_pipeline = pd.concat([
+                                results_pipeline, 
+                                pd.json_normalize(results_temp, 
+                                                    record_path='metrics', 
+                                                    meta=['pipeline', 
+                                                            'splitter', 
+                                                            'params', 
+                                                            'train_id',
+                                                            'param_updates',
+                                                            ])
+                                
+                                ])
+
+        return results_pipeline
+
+    def fit(self,
+            X:typing.Dict[str, np.ndarray],
+            y:str, 
+            ) -> pd.DataFrame:
+        '''
+        This function fits and predicts the pipelines, 
+        with the optional parameters and splitting 
+        arguments and produces a table of results
+        given the metrics.
+
+        Arguments
+        ---------
+
+        - `X`: `typing.Dict[str, np.ndarray]`:
+            The data dictionary that will be used to run
+            the experiments.
+        
+        - `y` : `str`:
+            Please either pass a string, which corresponds to the 
+            key in `X` which contains the labels.
+        
+        Returns
+        ---------
+        - `results`: `pandas.DataFrame`:
+            The results, with columns:
+            `['pipeline', 'split_number', 'metric', 
+            'value', 'splitter', 'params', 'train_id', 
+            'param_updates']`
+        
+        
+        
+        '''
+
+        self.tqdm_progress = tqdm.tqdm(
+                                        total=(self.split_runs
+                                                *self.cv.get_n_splits(groups=X[self.split_fit_on[-1]])
+                                                ), 
+                                        desc='Searching', 
+                                        disable=not self.verbose,
+                                        **tqdm_style,
+                                        )
+
+        results = pd.DataFrame()
+        for pipeline_name in self.pipeline_names:
+            results_pipeline = self._param_test_pipeline(
+                                                X=X,
+                                                y=y,
+                                                pipeline_name=pipeline_name,
+                                                )
+            results = pd.concat([results, results_pipeline])
+        self.tqdm_progress.close()
+
+        results = results[[
+                            'pipeline', 
+                            'split_number', 
+                            'train_or_test',
+                            'metric', 
+                            'value', 
+                            'splitter', 
+                            'params', 
+                            'train_id', 
+                            'param_updates',
+                            ]]
+        
+        return results.reset_index(drop=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class PipelineSearchCV(PipelineBasicSearchCV):
+    def __init__(self,
+                    pipeline_names:typing.List[str],
+                    name_to_object:typing.Dict[str, BaseEstimator],
+                    metrics:typing.Dict[str, typing.Callable],
+                    cv=None,
+                    split_fit_on:typing.List[str]=['X', 'y'],
+                    split_transform_on:typing.List[str]=['X', 'y'],
+                    param_grid:typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Dict[str, typing.Any]]]=None,
+                    verbose:bool=False,
+                    n_jobs=1,
+                    ):
+        '''
+        This class allows you to test multiple pipelines
+        on a supervised task, reporting on the metrics given in 
+        a table of results.
+        Given a splitting function, it will perform cross validation
+        on these pipelines. A parameter grid can also be passed, allowing
+        the user to test multiple configurations of each pipeline.
+        This class allows you to perform a grid search over the parameters
+        given in `param_grid`.
+
+        Example
+        ---------
+
+        ```
+        name_to_object = {
+                            'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
+                                                        fit_on=['X', 'y'],
+                                                        predict_on=['X'],
+                                                        ),
+                            'standard_scaler': sku.SKTransformerWrapperDD(StandardScaler, 
+                                                        fit_on=['X'], 
+                                                        transform_on=['X'],
+                                                        ),
+                            }
+        pipeline_names = [
+                            'standard_scaler--gbt',
+                            'gbt'
+                        ]
+        metrics = {
+                    'accuracy': accuracy_score, 
+                    'recall': recall_score, 
+                    'precision': precision_score,
+                    'f1': f1_score,
+                    }
+        splitter = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1024)
+
+        pscv = PipelineSearchCV(pipeline_names=pipeline_names,
+                                    name_to_object=name_to_object,
+                                    metrics=metrics,
+                                    cv=splitter,
+                                    split_fit_on=['X', 'y'],
+                                    split_transform_on=['X', 'y', 'id'],
+                                    verbose=True,
+                                    param_grid={
+                                                'gbt__learning_rate':[0.1, 0.01],
+                                                'gbt__max_depth':[3, 10],
+                                                },
+                                    )
+        X_data = {
+                    'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
+                    'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
+                    }
+        results = pscv.fit(X_data)
+        ```
+
+
+        
+        Arguments
+        ---------
+
+        - `pipeline_names`: `typing.List[str]`:
+            This is a list of strings that describe the pipelines
+            An example would be `standard_scaler--ae--mlp`.
+            The objects, separated by '--' should be keys in 
+            `name_to_object`.
+        
+        - `name_to_object`: `typing.Dict[str, BaseEstimator]`:
+            A dictionary mapping the keys in `pipeline_names` to
+            the objects that will be used as transformers and 
+            models in the pipeline.
+        
+        - `metrics`: `typing.Dict[str, typing.Callable]`:
+            A dictionary mapping the metric names to their callable
+            functions. These functions should take the form:
+            `func(labels, predictions)`.
+        
+        - `cv`: sklearn splitting class:
+            This is the class that is used to produce the cross
+            validation data. It should have the method
+            `.split(X, y, event)`, which returns the indices
+            of the training and testing set, and the method 
+            `get_n_splits()`, which should return the number
+            of splits that this splitter was indended to make.
+            Defaults to `None`.
+
+        - `split_fit_on`: `typing.List[str]`:
+            The keys corresponding to the values in 
+            the data dictionary passed in `.fit()`
+            that the `cv` will take as positional
+            arguments to the `split()` function.
+            Defaults to `['X', 'y']`.        
+
+        - `split_transform_on`: `typing.List[str]`:
+            The keys corresponding to the values in 
+            the data dictionary passed in `.fit()`
+            that the `cv` will split into training 
+            and testing data. This allows you to 
+            split data that isn't used in finding the
+            splitting indices.
+            Defaults to `['X', 'y']`.        
+
+        - `param_grid`: `typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Dict[str, typing.Any]]]`:
+            A dictionary or list of dictionaries that 
+            are used as a parameter grid for testing performance
+            of pipelines with multiple hyper-parameters. This should
+            be of the usual format given to 
+            `sklearn.model_selection.ParameterGrid` when 
+            used with `sklearn.pipeline.Pipeline`.
+            If `None`, then the pipeline is tested with 
+            the parameters given to the objects in 
+            `name_to_object`.
+            All pipelines will be tested with the given parameters
+            in addition to the parameter grid passed.
+            Only those parameters relevant to a pipeline
+            will be used.
+            Defaults to `None`.        
+        
+        - `verbose`: `bool`:
+            Whether to print progress as the models are being tested.
+            Remeber that you might also need to change the verbose options
+            in each of the objects given in `name_to_object`.
+            Defaults to `False`.     
+        
+        - `n_jobs`: `int`:
+            The number of parallel jobs. `-1` will run the 
+            searches on all cores, but will incur significant memory 
+            and cpu cost.
+            Defaults to `1`.     
+        
+        '''
+        assert not cv is None, 'Currently cv=None is not supported. '\
+                                'Please pass an initialised sklearn splitter.'
+
+        super().__init__(
+            pipeline_names = pipeline_names,
+            name_to_object = name_to_object,
+            metrics = metrics,
+            cv = cv,
+            verbose = verbose,
+            split_fit_on = split_fit_on,
+            split_transform_on = split_transform_on,
+            )
+
+        # building a param grid and counting number of experiments
+        self.param_grid = {pipeline_name: [None] for pipeline_name in pipeline_names}
+        if not param_grid is None:
+            self.split_runs = 0
+            # all combinations of parameters (including duplicates)
+            param_grid_all = list(ParameterGrid(param_grid))
+            
+            # de-duplicating and saving only runs relevant for each pipeline
+            for pipeline_name in pipeline_names:
+                # pipeline specific parameter grid
+                param_grid_pipeline_name = []
+                for pipeline_update_params in param_grid_all:
+                    # building a list of unique dictionaries
+                    param_grid_pipeline_name.append(
+                        frozenset(
+                            _get_relevant_param_updates(
+                                pipeline_name=pipeline_name,
+                                pipeline_update_params=pipeline_update_params,
+                                ).items()
+                            )
+                        )
+                param_grid_pipeline_name = frozenset(param_grid_pipeline_name)
+                self.param_grid[pipeline_name].extend(list(map(dict, param_grid_pipeline_name)))
+                # counting number of runs for that pipeline
+                self.split_runs += len(self.param_grid[pipeline_name])
+        else:
+            self.split_runs = len(pipeline_names)
+        self.n_jobs = n_jobs
+
+        return
+
+
+    def _param_test_pipeline(self,
                             X,
                             y,
                             pipeline_name,
@@ -337,7 +626,7 @@ class PipelineSearchCV(BaseEstimator):
                                                 )
             for rtm in results_temp_metrics:
                 results_temp['metrics'].extend(rtm)
-
+            
             results_pipeline = pd.concat([
                                     results_pipeline, 
                                     pd.json_normalize(results_temp, 
@@ -353,77 +642,293 @@ class PipelineSearchCV(BaseEstimator):
 
         return results_pipeline
 
-    @staticmethod
-    def _get_relevant_param_updates(pipeline_name, pipeline_update_params):
-        relevant_param_updates = {
-            k:v 
-            for k,v in pipeline_update_params.items() 
-            if k.split('__')[0] in pipeline_name
-            }
-        return relevant_param_updates
 
-    def fit(self,
-            X:typing.Dict[str, np.ndarray],
-            y:str, 
-            ) -> pd.DataFrame:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class PipelineBayesSearchCV(PipelineBasicSearchCV):
+    def __init__(self,
+                    pipeline_names:typing.List[str],
+                    name_to_object:typing.Dict[str, BaseEstimator],
+                    metrics:typing.Dict[str, typing.Callable],
+                    cv=None,
+                    split_fit_on:typing.List[str]=['X', 'y'],
+                    split_transform_on:typing.List[str]=['X', 'y'],
+                    param_grid:typing.List[typing.Dict[str, typing.List[typing.Any]]]=None,
+                    max_iter=10,
+                    opt_metric=None,
+                    verbose:bool=False,
+                    n_jobs=1,
+                    ):
         '''
-        This function fits and predicts the pipelines, 
-        with the optional parameters and splitting 
-        arguments and produces a table of results
-        given the metrics.
+        This class allows you to test multiple pipelines
+        on a supervised task, reporting on the metrics given in 
+        a table of results.
+        Given a splitting function, it will perform cross validation
+        on these pipelines. A parameter grid can also be passed, allowing
+        the user to test multiple configurations of each pipeline.
+        This class allows you to perform a bayesian parameter search over 
+        the parameters given in `param_grid`.
+        Note: At the moment this only supports real value param searches.
 
+        Example
+        ---------
+
+        ```
+        name_to_object = {
+                            'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
+                                                        fit_on=['X', 'y'],
+                                                        predict_on=['X'],
+                                                        ),
+                            'standard_scaler': sku.SKTransformerWrapperDD(StandardScaler, 
+                                                        fit_on=['X'], 
+                                                        transform_on=['X'],
+                                                        ),
+                            }
+        pipeline_names = [
+                            'standard_scaler--gbt',
+                            'gbt'
+                        ]
+        metrics = {
+                    'accuracy': accuracy_score, 
+                    'recall': recall_score, 
+                    'precision': precision_score,
+                    'f1': f1_score,
+                    }
+        splitter = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1024)
+
+        pscv = PipelineBayesSearchCV(pipeline_names=pipeline_names,
+                                    name_to_object=name_to_object,
+                                    metrics=metrics,
+                                    cv=splitter,
+                                    split_fit_on=['X', 'y'],
+                                    split_transform_on=['X', 'y', 'id'],
+                                    verbose=True,
+                                    param_grid= [
+                                        {'flatten_gbt__learning_rate': [5, 20]},
+                                        {'flatten_standard_scaler__with_mean': [True, False]},
+                                        {'flatten_mlp__dropout': [0.2, 0.9]},
+                                        ],
+                                    )
+        X_data = {
+                    'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
+                    'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
+                    }
+        results = pscv.fit(X_data)
+        ```
+
+
+        
         Arguments
         ---------
 
-        - ```X```: ```typing.Dict[str, np.ndarray]```:
-            The data dictionary that will be used to run
-            the experiments.
+        - `pipeline_names`: `typing.List[str]`:
+            This is a list of strings that describe the pipelines
+            An example would be `standard_scaler--ae--mlp`.
+            The objects, separated by '--' should be keys in 
+            `name_to_object`.
         
-        - ```y``` : ```str```:
-            Please either pass a string, which corresponds to the 
-            key in ```X``` which contains the labels.
+        - `name_to_object`: `typing.Dict[str, BaseEstimator]`:
+            A dictionary mapping the keys in `pipeline_names` to
+            the objects that will be used as transformers and 
+            models in the pipeline.
         
-        Returns
-        ---------
-        - ```results```: ```pandas.DataFrame```:
-            The results, with columns:
-            ```['pipeline', 'split_number', 'metric', 
-            'value', 'splitter', 'params', 'train_id', 
-            'param_updates']```
+        - `metrics`: `typing.Dict[str, typing.Callable]`:
+            A dictionary mapping the metric names to their callable
+            functions. These functions should take the form:
+            `func(labels, predictions)`.
         
+        - `cv`: sklearn splitting class:
+            This is the class that is used to produce the cross
+            validation data. It should have the method
+            `.split(X, y, event)`, which returns the indices
+            of the training and testing set, and the method 
+            `get_n_splits()`, which should return the number
+            of splits that this splitter was indended to make.
+            Defaults to `None`.
+
+        - `split_fit_on`: `typing.List[str]`:
+            The keys corresponding to the values in 
+            the data dictionary passed in `.fit()`
+            that the `cv` will take as positional
+            arguments to the `split()` function.
+            Defaults to `['X', 'y']`.        
+
+        - `split_transform_on`: `typing.List[str]`:
+            The keys corresponding to the values in 
+            the data dictionary passed in `.fit()`
+            that the `cv` will split into training 
+            and testing data. This allows you to 
+            split data that isn't used in finding the
+            splitting indices.
+            Defaults to `['X', 'y']`.        
+
+        - `param_grid`: `typing.List[typing.Dict[str, typing.List[typing.Any]]]`:
+            A dictionary or list of dictionaries that 
+            are used as a parameter grid for testing performance
+            of pipelines with multiple hyper-parameters. This should
+            be of the usual format given to 
+            `sklearn.model_selection.ParameterGrid` when 
+            used with `sklearn.pipeline.Pipeline`.
+            If `None`, then the pipeline is tested with 
+            the parameters given to the objects in 
+            `name_to_object`.
+            All pipelines will be tested with the given parameters
+            in addition to the parameter grid passed.
+            Only those parameters relevant to a pipeline
+            will be used.
+            Defaults to `None`.  
+
+        - `max_iter`: `int`, optional:
+            The number of calls to make on each pipeline when
+            finding the optimum params.
+            Defaults to `10`.
+
+        - `opt_metric`: `typing.Union[str, None]`, optional:
+            The metric values to use when determining the 
+            optimal parameters. If `None`, the first
+            metric given in `metrics.keys()` will be used.
+            If a `str`, this should be a key in `metrics`.
+            Defaults to `None`.
         
+        - `verbose`: `bool`:
+            Whether to print progress as the models are being tested.
+            Remeber that you might also need to change the verbose options
+            in each of the objects given in `name_to_object`.
+            Defaults to `False`.     
+        
+        - `n_jobs`: `int`:
+            The number of parallel jobs. `-1` will run the 
+            searches on all cores, but will incur significant memory 
+            and cpu cost.
+            Defaults to `1`.     
         
         '''
+        assert not cv is None, 'Currently cv=None is not supported. '\
+                                'Please pass an initialised sklearn splitter.'
 
-        self.tqdm_progress = tqdm.tqdm(
-                                        total=(self.split_runs
-                                                *self.cv.get_n_splits(groups=X[self.split_fit_on[-1]])
-                                                ), 
-                                        desc='Searching', 
-                                        disable=not self.verbose,
-                                        **tqdm_style,
-                                        )
+        super().__init__(
+            pipeline_names = pipeline_names,
+            name_to_object = name_to_object,
+            metrics = metrics,
+            cv = cv,
+            verbose = verbose,
+            split_fit_on = split_fit_on,
+            split_transform_on = split_transform_on,
+            )
 
-        results = pd.DataFrame()
-        for pipeline_name in self.pipeline_names:
-            results_pipeline = self._grid_test_pipeline(
+        # building a param grid and counting number of experiments
+        self.param_grid = {pipeline_name: [] for pipeline_name in pipeline_names}
+        if not param_grid is None:
+            self.split_runs = 0
+            # all combinations of parameters (including duplicates)
+            param_grid_all = list(param_grid)
+            
+            for pipeline_name in pipeline_names:
+                # pipeline specific parameter grid
+                for pipeline_update_params in param_grid_all:
+                    pipeline_update_params = _get_relevant_param_updates(
+                                                pipeline_name, 
+                                                pipeline_update_params
+                                                )
+                    if len(pipeline_update_params) != 0:
+                        self.param_grid[pipeline_name].append(pipeline_update_params)
+                self.split_runs += len(self.param_grid[pipeline_name])
+        else:
+            self.split_runs = len(pipeline_names)
+        self.split_runs *= max_iter
+        self.n_jobs = n_jobs
+        self.max_iter = max_iter
+        self.opt_metric = opt_metric if not opt_metric is None else list(self.metrics.keys())[0]
+        self.opt_result = {}
+
+
+        return
+
+
+    def _param_test_pipeline(self,
+                            X,
+                            y,
+                            pipeline_name,
+                            ):
+        '''
+        Testing the whole pipeline, over the splits and params.
+        '''
+
+        results_pipeline = []
+
+        opt_params = [
+            list(d.items())[0] 
+            for d in self.param_grid[pipeline_name]
+            ]
+        opt_params = [
+            {'name': items[0], 'low': items[1][0], 'high': items[1][1]} 
+            for items in opt_params]
+        dims = [skopt.space.Real(**items) for items in opt_params]
+        
+        @skopt.utils.use_named_args(dimensions=dims)
+        def to_optimise(**params_update):
+            pipeline = pipeline_constructor(pipeline_name,
+                        name_to_object=self.name_to_object,
+                        verbose=False)
+            results_temp = {
+                'pipeline': pipeline_name,
+                'metrics': [],
+                'splitter': type(self.cv).__name__,
+                'params': pipeline.get_params(),
+                'param_updates': params_update,
+                'train_id': uuid.uuid4(),
+                }
+            # updating params if there are any to update
+            if not params_update is None:
+                pipeline.set_params(**params_update)
+            # getting and saving results
+            results_temp_metrics = self._test_pipeline(
                                                 X=X,
                                                 y=y,
-                                                pipeline_name=pipeline_name,
+                                                pipeline=pipeline,
                                                 )
-            results = pd.concat([results, results_pipeline])
-        self.tqdm_progress.close()
+            for rtm in results_temp_metrics:
+                results_temp['metrics'].extend(rtm)
 
-        results = results[[
-                            'pipeline', 
-                            'split_number', 
-                            'train_or_test',
-                            'metric', 
-                            'value', 
-                            'splitter', 
-                            'params', 
-                            'train_id', 
-                            'param_updates',
-                            ]]
-        
-        return results.reset_index(drop=True)
+            results_temp_df = pd.json_normalize(results_temp, 
+                                record_path='metrics', 
+                                meta=['pipeline', 
+                                        'splitter', 
+                                        'params', 
+                                        'train_id',
+                                        'param_updates',
+                                        ])
+
+            results_pipeline.append(
+                                    results_temp_df,
+                                    )
+            metric_opt = self.opt_metric
+            opt_result = (results_temp_df.query(
+                "train_or_test == 'test' "\
+                "& metric == @metric_opt")
+                ['value']
+                .mean()
+                )
+
+            return opt_result
+
+        self.opt_result[pipeline_name] = skopt.gp_minimize(
+            to_optimise, 
+            dimensions=dims, 
+            n_calls=self.max_iter,
+            )
+        results_pipeline = pd.concat(results_pipeline)
+
+        return results_pipeline

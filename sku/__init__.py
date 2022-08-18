@@ -17,6 +17,7 @@ __all__ = [
     'train_test_group_split',
     'SKModelWrapperDD',
     'PipelineSearchCV',
+    'BasicSearchCV',
     'PipelineDD',
     'pipeline_constructor',
     'Flatten',
