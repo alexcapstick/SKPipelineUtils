@@ -6,6 +6,8 @@ import uuid
 import joblib
 import functools
 
+from joblib.externals.loky import get_reusable_executor
+
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import ParameterGrid
 
@@ -259,6 +261,8 @@ class PipelineSearchCV(BaseEstimator):
                                         } 
                                         for metric, func in metrics.items()
                                         ])
+            
+
 
             return results_single_split
         
@@ -287,6 +291,9 @@ class PipelineSearchCV(BaseEstimator):
         for rss in results_single_split:
             results_temp['metrics'].extend(rss)
         #self.tqdm_progress.update(self.cv.get_n_splits(groups=X[self.split_fit_on[-1]]))
+
+        # delete parallel processes
+        get_reusable_executor().shutdown(wait=True)
 
         return results_temp
 
