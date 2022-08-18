@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import numpy as np
 import pandas as pd
 import typing
@@ -142,6 +143,10 @@ class PipelineSearchCV(BaseEstimator):
             If ```None```, then the pipeline is tested with 
             the parameters given to the objects in 
             ```name_to_object```.
+            All pipelines will be tested with the given parameters
+            in addition to the parameter grid passed.
+            Only those parameters relevant to a pipeline
+            will be used.
             Defaults to ```None```.        
         
         - ```verbose```: ```bool```:
@@ -168,7 +173,34 @@ class PipelineSearchCV(BaseEstimator):
         self.param_grid = param_grid
         self.split_fit_on = split_fit_on
         self.split_transform_on = split_transform_on
-        self.param_grid = [None] if param_grid is None else ParameterGrid(param_grid)
+        
+        # building a param grid and counting number of experiments
+        self.param_grid = {pipeline_name: [None] for pipeline_name in pipeline_names}
+        if not param_grid is None:
+            self.split_runs = 0
+            # all combinations of parameters (including duplicates)
+            param_grid_all = list(ParameterGrid(param_grid))
+            
+            # de-duplicating and saving only runs relevant for each pipeline
+            for pipeline_name in pipeline_names:
+                # pipeline specific parameter grid
+                param_grid_pipeline_name = []
+                for pipeline_update_params in param_grid_all:
+                    # building a list of unique dictionaries
+                    param_grid_pipeline_name.append(
+                        frozenset(
+                            self._get_relevant_param_updates(
+                                pipeline_name=pipeline_name,
+                                pipeline_update_params=pipeline_update_params,
+                                ).items()
+                            )
+                        )
+                param_grid_pipeline_name = frozenset(param_grid_pipeline_name)
+                self.param_grid[pipeline_name].extend(list(map(dict, param_grid_pipeline_name)))
+                # counting number of runs for that pipeline
+                self.split_runs += len(self.param_grid[pipeline_name])
+        else:
+            self.split_runs = len(pipeline_names)
         self.n_jobs = n_jobs
 
         return
@@ -176,42 +208,11 @@ class PipelineSearchCV(BaseEstimator):
     def _test_pipeline(self,
                     X,
                     y,
-                    pipeline_name,
-                    pipeline_update_params=None,
+                    pipeline,
                     ):
         '''
         Testing the whole pipeline, over the splits, with given params.
         '''
-
-        pipeline = pipeline_constructor(pipeline_name,
-                    name_to_object=self.name_to_object,
-                    verbose=False)
-
-        if not pipeline_update_params is None:
-            pipeline_params = pipeline.get_params()
-            pipeline_update_params = {k:v for k,v in pipeline_update_params.items() if k in pipeline_params}
-            if len(pipeline_update_params)!=0:
-                pipeline.set_params(**pipeline_update_params)
-            else:
-                results_temp = {
-                                'pipeline': pipeline_name,
-                                'metrics': [],
-                                'splitter': type(self.cv).__name__,
-                                'params': pipeline.get_params(),
-                                'param_updates': None,
-                                'train_id': uuid.uuid4(),
-                                }
-                self.tqdm_progress.update(self.cv.get_n_splits())
-                return results_temp
-
-        results_temp = {
-                        'pipeline': pipeline_name,
-                        'metrics': [],
-                        'splitter': type(self.cv).__name__,
-                        'params': pipeline.get_params(),
-                        'param_updates': pipeline_update_params,
-                        'train_id': uuid.uuid4(),
-                        }
 
         # defining testing function to run in parallel
         def _test_pipeline_parallel(
@@ -266,6 +267,7 @@ class PipelineSearchCV(BaseEstimator):
 
             return results_single_split
         
+        # parallel running of fitting
         f_parallel = functools.partial(_test_pipeline_parallel, 
                                 X=X, 
                                 y=y,
@@ -273,29 +275,32 @@ class PipelineSearchCV(BaseEstimator):
                                 pipeline=pipeline,
                                 metrics=self.metrics,
         )
+        try:
+            results_single_split = ProgressParallel(
+                                    tqdm_bar=self.tqdm_progress, 
+                                    n_jobs=self.n_jobs
+                                    )(joblib.delayed(f_parallel)(
+                                        train_idx=train_idx,
+                                        test_idx=test_idx,
+                                        ns=ns,
+                                        ) for ns, (train_idx, test_idx) 
+                                            in enumerate(
+                                                list(
+                                                    self.cv.split(*[ X[split_data] 
+                                                        for split_data in self.split_fit_on 
+                                                    ]))))
+            kbi = False
 
-        results_single_split = ProgressParallel(
-                                tqdm_bar=self.tqdm_progress, 
-                                n_jobs=self.n_jobs
-                                )(joblib.delayed(f_parallel)(
-                                    train_idx=train_idx,
-                                    test_idx=test_idx,
-                                    ns=ns,
-                                    ) for ns, (train_idx, test_idx) 
-                                        in enumerate(
-                                            list(
-                                                self.cv.split(*[ X[split_data] 
-                                                    for split_data in self.split_fit_on 
-                                                ]))))
+        except KeyboardInterrupt:
+            kbi = True
         
-        for rss in results_single_split:
-            results_temp['metrics'].extend(rss)
-        #self.tqdm_progress.update(self.cv.get_n_splits(groups=X[self.split_fit_on[-1]]))
-
         # delete parallel processes
         get_reusable_executor().shutdown(wait=True)
 
-        return results_temp
+        if kbi:
+            raise KeyboardInterrupt
+
+        return results_single_split
 
     def _grid_test_pipeline(self,
                             X,
@@ -308,13 +313,31 @@ class PipelineSearchCV(BaseEstimator):
 
         results_pipeline = pd.DataFrame()
 
-        for g in self.param_grid:
-            results_temp = self._test_pipeline(
+        for g in self.param_grid[pipeline_name]:
+            pipeline = pipeline_constructor(pipeline_name,
+                        name_to_object=self.name_to_object,
+                        verbose=False)
+            results_temp = {
+                            'pipeline': pipeline_name,
+                            'metrics': [],
+                            'splitter': type(self.cv).__name__,
+                            'params': pipeline.get_params(),
+                            'param_updates': g,
+                            'train_id': uuid.uuid4(),
+                            }
+            # updating params if there are any to update
+            if not g is None:
+                pipeline.set_params(**g)
+            
+            # getting and saving results
+            results_temp_metrics = self._test_pipeline(
                                                 X=X,
                                                 y=y,
-                                                pipeline_name=pipeline_name,
-                                                pipeline_update_params=g,
+                                                pipeline=pipeline,
                                                 )
+            for rtm in results_temp_metrics:
+                results_temp['metrics'].extend(rtm)
+
             results_pipeline = pd.concat([
                                     results_pipeline, 
                                     pd.json_normalize(results_temp, 
@@ -329,6 +352,15 @@ class PipelineSearchCV(BaseEstimator):
                                     ])
 
         return results_pipeline
+
+    @staticmethod
+    def _get_relevant_param_updates(pipeline_name, pipeline_update_params):
+        relevant_param_updates = {
+            k:v 
+            for k,v in pipeline_update_params.items() 
+            if k.split('__')[0] in pipeline_name
+            }
+        return relevant_param_updates
 
     def fit(self,
             X:typing.Dict[str, np.ndarray],
@@ -364,9 +396,8 @@ class PipelineSearchCV(BaseEstimator):
         '''
 
         self.tqdm_progress = tqdm.tqdm(
-                                        total=(len(self.pipeline_names)
+                                        total=(self.split_runs
                                                 *self.cv.get_n_splits(groups=X[self.split_fit_on[-1]])
-                                                *len(self.param_grid)
                                                 ), 
                                         desc='Searching', 
                                         disable=not self.verbose,
