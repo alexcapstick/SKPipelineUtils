@@ -666,10 +666,11 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                     split_fit_on:typing.List[str]=['X', 'y'],
                     split_transform_on:typing.List[str]=['X', 'y'],
                     param_grid:typing.List[typing.Dict[str, typing.List[typing.Any]]]=None,
-                    max_iter=10,
-                    opt_metric=None,
+                    max_iter:int=10,
+                    opt_metric:typing.Union[str, None]=None,
+                    minimise:bool=True,
                     verbose:bool=False,
-                    n_jobs=1,
+                    n_jobs:int=1,
                     ):
         '''
         This class allows you to test multiple pipelines
@@ -802,6 +803,11 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
             If a `str`, this should be a key in `metrics`.
             Defaults to `None`.
         
+        - `minimise`: `bool`, optional:
+            Whether to minimise the metric given in `opt_metric`.
+            If `False`, the metric will be maximised.
+            Defaults to `True`.
+        
         - `verbose`: `bool`:
             Whether to print progress as the models are being tested.
             Remeber that you might also need to change the verbose options
@@ -852,6 +858,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
         self.max_iter = max_iter
         self.opt_metric = opt_metric if not opt_metric is None else list(self.metrics.keys())[0]
         self.opt_result = {}
+        self.minimise = 1 if minimise else -1
 
 
         return
@@ -922,13 +929,17 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                 .mean()
                 )
 
-            return opt_result
+            return opt_result*self.minimise
 
         self.opt_result[pipeline_name] = skopt.gp_minimize(
             to_optimise, 
             dimensions=dims, 
             n_calls=self.max_iter,
             )
+        
+        self.opt_result[pipeline_name].fun *= self.minimise
+        self.opt_result[pipeline_name].func_vals *= self.minimise
+
         results_pipeline = pd.concat(results_pipeline)
 
         return results_pipeline
