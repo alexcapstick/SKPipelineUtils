@@ -1040,6 +1040,8 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
         Testing the whole pipeline, over the splits and params.
         '''
 
+        self.tqdm_progress.set_postfix({'pm_n': pipeline_name.split('--')[-1]})
+
         results_pipeline = []
 
         opt_params = [
