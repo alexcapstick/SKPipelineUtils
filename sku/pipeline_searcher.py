@@ -1017,8 +1017,10 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                                                 )
                     if len(pipeline_update_params) != 0:
                         self.param_grid[pipeline_name].append(pipeline_update_params)
-                self.split_runs += len(self.param_grid[pipeline_name])
-            self.split_runs *= max_iter
+                if len(self.param_grid[pipeline_name]) > 0:
+                    self.split_runs += len(self.param_grid[pipeline_name])*max_iter
+                else: 
+                    self.split_runs += 1
         else:
             self.split_runs = len(pipeline_names)
         self.n_jobs = n_jobs
