@@ -16,7 +16,7 @@ from sklearn.model_selection import ParameterGrid
 
 from .pipeline import PipelineDD, pipeline_constructor
 from .progress import tqdm_style, ProgressParallel
-
+from .model_selection import DataPreSplit
 
 
 
@@ -27,73 +27,6 @@ def _get_relevant_param_updates(pipeline_name, pipeline_update_params):
         if k.split('__')[0] in pipeline_name
         }
     return relevant_param_updates
-
-
-
-
-
-class DataPreSplit:
-    def __init__(self, 
-                    data_train, 
-                    data_val,
-                    split_fit_on=['X', 'y'], 
-                    n=None,
-                    ):
-        self.data_train = copy.deepcopy(data_train)
-        self.data_val = copy.deepcopy(data_val)
-        self.split_fit_on = split_fit_on
-        self.n = n if not n is None else 1
-        return
-    
-    def reformat_X(self):
-
-        X = {}
-        train_idx = [self.data_train[k].shape[0] for k in self.split_fit_on]
-        val_idx = [self.data_val[k].shape[0] for k in self.split_fit_on]
-        for key, value in self.data_val.items():
-            if key in self.data_train:
-                X[key] = np.concatenate([self.data_train[key], value], axis=0)
-
-        if len(np.unique(train_idx))>1:
-            raise TypeError('Please ensure that all split_fit_on values in data_train '\
-                            'have the same length.')
-        if len(np.unique(val_idx))>1:
-            raise TypeError('Please ensure that all split_fit_on values in data_val '\
-                            'have the same length.')
-
-        val_idx = val_idx[0]
-        train_idx = train_idx[0]
-
-
-        self.val_idx = np.arange(train_idx, train_idx+val_idx)
-        self.train_idx = np.arange(train_idx)
-
-        return X
-
-    def get_n_splits(self, groups=None):
-        return self.n
-    
-    def split(self, X, y=None, groups=None):
-        if X.shape[0]-1 != self.val_idx[-1]:
-            raise TypeError('X is not the same size as the indices built in '\
-                            'reformat_X.')
-
-        return [[self.train_idx, self.val_idx]]*self.n
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -112,6 +45,7 @@ class PipelineBasicSearchCV(BaseEstimator):
                     name_to_object:typing.Dict[str, BaseEstimator],
                     metrics:typing.Dict[str, typing.Callable],
                     cv=None,
+                    repeat:int=1,
                     split_fit_on:typing.List[str]=['X', 'y'],
                     split_transform_on:typing.List[str]=['X', 'y'],
                     verbose:bool=False,
@@ -196,10 +130,13 @@ class PipelineBasicSearchCV(BaseEstimator):
             case you may pass the training and validation data 
             dictionaries themselves, in a tuple `(data_train, data_val)`
             to the `fit` method in place of the argument `X`. This
-            is currently only possible with a single split. If an integer
-            is passed, then this split is repeatedly tested on that
-            number of times.
+            is currently only possible with a single split.
             Defaults to `None`.
+
+        - `repeat`: `int`, optional:
+            The number of times to repeat the 
+            experiment.
+            Defaults to `1`.  
 
         - `split_fit_on`: `typing.List[str]`, optional:
             The keys corresponding to the values in 
@@ -244,6 +181,7 @@ class PipelineBasicSearchCV(BaseEstimator):
         self.name_to_object = name_to_object
         self.metrics = metrics
         self.cv = cv
+        self.repeat = repeat
         self.verbose = verbose
         self.split_fit_on = split_fit_on
         self.split_transform_on = split_transform_on
@@ -297,28 +235,29 @@ class PipelineBasicSearchCV(BaseEstimator):
 
             else:
                 results_single_split = [
-                                        {
-                                        'metric': metric, 
-                                        'value': func(labels_test, predictions_test),
-                                        'split_number': ns,
-                                        'train_or_test': 'test',
-                                        #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
-                                        #'test_positve': np.sum(labels)/labels.shape[0],
-                                        } 
-                                        for metric, func in metrics.items()
-                                        ]
+                        {
+                            'metric': metric, 
+                            'value': func(labels_test, predictions_test),
+                            'split_number': ns,
+                            'train_or_test': 'test',
+                            #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
+                            #'test_positve': np.sum(labels)/labels.shape[0],
+                        } 
+                        for metric, func in metrics.items()
+                    ]
 
-                results_single_split.extend([
-                                            {
-                                            'metric': metric, 
-                                            'value': func(labels_train, predictions_train),
-                                            'split_number': ns,
-                                            'train_or_test': 'train',
-                                            #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
-                                            #'test_positve': np.sum(labels)/labels.shape[0],
-                                            } 
-                                            for metric, func in metrics.items()
-                                            ])
+                results_single_split.extend(
+                    [
+                        {
+                            'metric': metric, 
+                            'value': func(labels_train, predictions_train),
+                            'split_number': ns,
+                            'train_or_test': 'train',
+                            #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
+                            #'test_positve': np.sum(labels)/labels.shape[0],
+                        } 
+                        for metric, func in metrics.items()
+                    ])
 
             return results_single_split
         
@@ -451,7 +390,7 @@ class PipelineBasicSearchCV(BaseEstimator):
         return results_pipeline
 
     def fit(self,
-            X:typing.Dict[str, np.ndarray],
+            X:typing.Union[typing.Dict[str, np.ndarray], typing.Tuple[typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]],
             y:str, 
             ) -> pd.DataFrame:
         '''
@@ -463,9 +402,14 @@ class PipelineBasicSearchCV(BaseEstimator):
         Arguments
         ---------
 
-        - `X`: `typing.Dict[str, np.ndarray]`:
+        - `X`: `typing.Union[typing.Dict[str, np.ndarray], typing.Tuple[typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]]`:
             The data dictionary that will be used to run
-            the experiments.
+            the experiments. This may also be a tuple of 
+            data dictionaries used for training and validation
+            splits if `cv=None`. In this case, you may also pass
+            a list of tuples of data dictionaries in the form
+            `[(data_train, data_val), (data_train, data_val), ...]`, 
+            where `data_train` and `data_val` are data dictionaries.
         
         - `y` : `str`:
             Please either pass a string, which corresponds to the 
@@ -484,21 +428,23 @@ class PipelineBasicSearchCV(BaseEstimator):
         '''
 
         # check if train and val are pre split
-        if self.cv is None or type(self.cv) is int:
-            if len(X) == 2:
+        if self.cv is None:
+            if type(X) in [tuple, list]:
                 self.cv=DataPreSplit(
-                    *X, 
-                    split_fit_on=self.split_fit_on, 
-                    n=self.cv,
+                    X, 
+                    split_fit_on=self.split_fit_on,
                     )
                 X = self.cv.reformat_X()
             else:
                 raise TypeError("If using cv=None, please pass (data_train, data_val) "\
-                                "as the argument to X")
+                                "as the argument to X, as a tuple. Alternatively, pass "\
+                                "a list of tuples[(data_train, data_val), (data_train, data_val), ...]. "\
+                                )
 
         self.tqdm_progress = tqdm.tqdm(
                                         total=(self.split_runs
                                                 *self.cv.get_n_splits(groups=X[self.split_fit_on[-1]])
+                                                *self.repeat
                                                 ), 
                                         desc='Searching', 
                                         disable=not self.verbose,
@@ -506,17 +452,22 @@ class PipelineBasicSearchCV(BaseEstimator):
                                         )
 
         results = pd.DataFrame()
-        for pipeline_name in self.pipeline_names:
-            results_pipeline = self._param_test_pipeline(
-                                                X=X,
-                                                y=y,
-                                                pipeline_name=pipeline_name,
-                                                )
-            results = pd.concat([results, results_pipeline])
+        for ir in range(self.repeat):
+            self.repeat_n = ir
+            for pipeline_name in self.pipeline_names:
+                results_pipeline = self._param_test_pipeline(
+                                                    X=X,
+                                                    y=y,
+                                                    pipeline_name=pipeline_name,
+                                                    )
+                results_pipeline['repeat_number'] = self.repeat_n
+                results = pd.concat([results, results_pipeline])
+        
         self.tqdm_progress.close()
 
         results = results[[
                             'pipeline', 
+                            'repeat_number',
                             'split_number', 
                             'train_or_test',
                             'metric', 
@@ -563,6 +514,7 @@ class PipelineSearchCV(PipelineBasicSearchCV):
                     name_to_object:typing.Dict[str, BaseEstimator],
                     metrics:typing.Dict[str, typing.Callable],
                     cv=None,
+                    repeat:int=1,
                     split_fit_on:typing.List[str]=['X', 'y'],
                     split_transform_on:typing.List[str]=['X', 'y'],
                     param_grid:typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Dict[str, typing.Any]]]=None,
@@ -655,6 +607,11 @@ class PipelineSearchCV(PipelineBasicSearchCV):
             of splits that this splitter was indended to make.
             Defaults to `None`.
 
+        - `repeat`: `int`, optional:
+            The number of times to repeat the 
+            experiment.
+            Defaults to `1`.  
+
         - `split_fit_on`: `typing.List[str]`:
             The keys corresponding to the values in 
             the data dictionary passed in `.fit()`
@@ -713,6 +670,7 @@ class PipelineSearchCV(PipelineBasicSearchCV):
             name_to_object = name_to_object,
             metrics = metrics,
             cv = cv,
+            repeat=repeat,
             verbose = verbose,
             split_fit_on = split_fit_on,
             split_transform_on = split_transform_on,
@@ -823,6 +781,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                     name_to_object:typing.Dict[str, BaseEstimator],
                     metrics:typing.Dict[str, typing.Callable],
                     cv=None,
+                    repeat:int=1,
                     split_fit_on:typing.List[str]=['X', 'y'],
                     split_transform_on:typing.List[str]=['X', 'y'],
                     param_grid:typing.List[typing.Dict[str, typing.List[typing.Any]]]=None,
@@ -920,6 +879,11 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
             of splits that this splitter was indended to make.
             Defaults to `None`.
 
+        - `repeat`: `int`, optional:
+            The number of times to repeat the 
+            experiment.
+            Defaults to `1`.  
+
         - `split_fit_on`: `typing.List[str]`:
             The keys corresponding to the values in 
             the data dictionary passed in `.fit()`
@@ -995,6 +959,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
             name_to_object = name_to_object,
             metrics = metrics,
             cv = cv,
+            repeat=repeat,
             verbose = verbose,
             split_fit_on = split_fit_on,
             split_transform_on = split_transform_on,
@@ -1017,12 +982,14 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                                                 )
                     if len(pipeline_update_params) != 0:
                         self.param_grid[pipeline_name].append(pipeline_update_params)
+
                 if len(self.param_grid[pipeline_name]) > 0:
                     self.split_runs += len(self.param_grid[pipeline_name])*max_iter
                 else: 
                     self.split_runs += 1
         else:
             self.split_runs = len(pipeline_names)
+
         self.n_jobs = n_jobs
         self.max_iter = max_iter
         self.opt_metric = opt_metric if not opt_metric is None else list(self.metrics.keys())[0]
@@ -1101,22 +1068,25 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
 
             return opt_result*self.minimise
 
+        if not pipeline_name in self.opt_result:
+            self.opt_result[pipeline_name] = []
+
         if len(dims)>0:
 
             @skopt.utils.use_named_args(dimensions=dims)
             def named_args_to_optimise(*args, **kwargs):
                 return to_optimise(*args, **kwargs)
 
-            self.opt_result[pipeline_name] = skopt.gp_minimize(
+            self.opt_result[pipeline_name].append(skopt.gp_minimize(
                 named_args_to_optimise, 
                 dimensions=dims, 
                 n_calls=self.max_iter,
-                )
-            self.opt_result[pipeline_name].fun *= self.minimise
-            self.opt_result[pipeline_name].func_vals *= self.minimise
+                ))
+            self.opt_result[pipeline_name][-1].fun *= self.minimise
+            self.opt_result[pipeline_name][-1].func_vals *= self.minimise
         else:
             to_optimise()
-            self.opt_result[pipeline_name] = None
+            self.opt_result[pipeline_name].append(None)
 
         results_pipeline = pd.concat(results_pipeline)
 

@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.model_selection import StratifiedGroupKFold
 import typing
-
+import copy
 
 def train_test_group_split(*arrays, 
                             y,
@@ -115,3 +115,218 @@ def train_test_group_split(*arrays,
         output.append(group[test_idx])
         
         return output
+
+
+
+
+
+class DataPreSplit:
+    def __init__(self, 
+                    data:typing.Union[
+                        typing.List[
+                            typing.Tuple[
+                                typing.Dict[str, np.ndarray], 
+                                typing.Dict[str, np.ndarray]]], 
+                        typing.Tuple[
+                            typing.Dict[str, np.ndarray], 
+                            typing.Dict[str, np.ndarray]]],
+                    split_fit_on:typing.List[str]=['X', 'y'], 
+                    ):
+        '''
+        This function allows you to wrap pre-split
+        data into a class that behaves like
+        an sklearn splitter. This is useful in 
+        pipeline searches.
+        
+        
+        
+        Examples
+        ---------
+        ```
+        >>> splitter = sku.DataPreSplit(
+                data=[
+                        (
+                            {'X': np.arange(10)}, 
+                            {'X': np.arange(5)}, 
+                            ),
+                        (
+                            {'X': np.arange(5)}, 
+                            {'X': np.arange(2)}, 
+                            ),
+                        (
+                            {'X': np.arange(2)}, 
+                            {'X': np.arange(3)}, 
+                            ),
+                    ],
+                split_fit_on=['X']
+                )
+        >>> X = splitter.reformat_X()
+        >>> for train_idx, val_idx in splitter.split(X['X']):
+                train_data, val_data = X['X'][train_idx], X['X'][val_idx]
+                do_things(train_data, val_data)
+        ```
+        
+        Arguments
+        ---------
+        
+        - `data`: `typing.Union[ typing.List[ typing.Tuple[ typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]], typing.Tuple[ typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]]`: 
+            The pre-split data. Please ensure
+            all splits have the same keys.
+        
+        - `split_fit_on`: `typing.List[str]`, optional:
+            The labels in the data dictionaries to split
+            the data on. 
+            Defaults to `['X', 'y']`.
+        
+        
+        Raises
+        ---------
+        
+            `TypeError`: If `data` is not a list or tuple.
+        
+        
+        '''
+        data_train, data_val = [], []
+        
+        if type(data) == tuple:
+            data_train.append(data[0])
+            data_val.append(data[1])
+            self.n_splits=1
+        
+        elif type(data) == list:
+            for ns, (dtr, dte) in enumerate(data):
+                data_train.append(dtr)
+                data_val.append(dte)
+        
+            self.n_splits = ns+1
+
+        else:
+            raise TypeError("Please pass (data_train, data_val) "\
+                            "as the argument to X, as a tuple. Alternatively, pass "\
+                            "a list of tuples[(data_train, data_val), (data_train, data_val), ...]. "\
+                            )
+
+        self.data_train = copy.deepcopy(data_train)
+        self.data_val = copy.deepcopy(data_val)
+        self.split_fit_on = split_fit_on
+        return
+    
+    def reformat_X(self) -> typing.Dict[str, np.ndarray]:
+        '''
+        This reformats the X so that it can 
+        be split by the indices returned in `splits`.
+        It essentially concatenates all of the data 
+        dictionaries.
+        
+        
+        Returns
+        --------
+        
+        - `out`: `typing.Dict[str, np.ndarray]` : 
+            Dictionary containing concatenated 
+            arrays from the pre-split data.
+        
+        '''
+
+        self.train_idx, self.val_idx = [], []
+        X = {}
+        previous_end = 0
+        for ns, (dtr, dte) in enumerate(zip(self.data_train, self.data_val)):
+            X_ns = {}
+            train_idx_ns = [dtr[k].shape[0] for k in self.split_fit_on]
+            val_idx_ns = [dte[k].shape[0] for k in self.split_fit_on]
+            for key, value in dte.items():
+                if key in dtr:
+                    X_ns[key] = np.concatenate([dtr[key], value], axis=0)
+
+            if len(np.unique(train_idx_ns))>1:
+                raise TypeError('Please ensure that all split_fit_on values in data_train '\
+                                'have the same length.')
+            if len(np.unique(val_idx_ns))>1:
+                raise TypeError('Please ensure that all split_fit_on values in data_val '\
+                                'have the same length.')
+
+            val_idx_ns = val_idx_ns[0]
+            train_idx_ns = train_idx_ns[0]
+
+            self.val_idx.append(np.arange(train_idx_ns, train_idx_ns+val_idx_ns) + previous_end)
+            self.train_idx.append(np.arange(train_idx_ns) + previous_end)
+            previous_end += train_idx_ns+val_idx_ns
+
+            for key, value in X_ns.items():
+                if key in X:
+                    X[key] = np.concatenate([X[key], value], axis=0)
+                else:
+                    X[key] = value
+
+        return X
+
+    def get_n_splits(self, groups:typing.Any=None) -> int:
+        '''
+        Returns the number of splits.
+        
+        Arguments
+        ---------
+        
+        - `groups`: `typing.Any`, optional:
+            Ignored. 
+            Defaults to `None`.
+        
+        
+        
+        Returns
+        --------
+        
+        - `out`: `int` : 
+            The number of splits.
+        
+        
+        '''
+        return self.n_splits
+    
+    def split(
+        self, 
+        X:typing.Dict[str, np.ndarray], 
+        y:typing.Any=None, 
+        groups:typing.Any=None,
+        ):
+        '''
+        This returns the training and testing idices.
+        
+        
+        
+        Arguments
+        ---------
+        
+        - `X`: `typing.Dict[str, np.ndarray]`: 
+            A data dictionary that is only
+            used to ensure that an array of the 
+            right shape is being used for the splitting
+            operation.
+        
+        - `y`: `typing.Any`, optional:
+            Ignored. 
+            Defaults to `None`.
+        
+        - `groups`: `typing.Any`, optional:
+            Ignored. 
+            Defaults to `None`.
+        
+        
+        Returns
+        --------
+        
+        - `out`: 
+            The train and test idices, wraped in a generator.
+            See the Examples for an understanding of the output.
+        
+        
+        '''
+        if X.shape[0]-1 != self.val_idx[-1][-1]:
+            raise TypeError('X is not the same size as the indices built in '\
+                            'reformat_X.')
+
+        return zip(self.train_idx, self.val_idx)
+
+
+
