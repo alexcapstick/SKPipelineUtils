@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import copy
+from tracemalloc import stop
 import numpy as np
 import pandas as pd
 import typing
@@ -44,13 +45,15 @@ class PipelineBasicSearchCV(BaseEstimator):
                     pipeline_names:typing.List[str],
                     name_to_object:typing.Dict[str, BaseEstimator],
                     metrics:typing.Dict[str, typing.Callable],
+                    metrics_probability:typing.Dict[str, typing.Callable]={},
                     cv=None,
                     repeat:int=1,
                     split_fit_on:typing.List[str]=['X', 'y'],
                     split_transform_on:typing.List[str]=['X', 'y'],
                     verbose:bool=False,
-                    n_jobs=1,
-                    combine_splits=False,
+                    n_jobs:int=1,
+                    combine_splits:bool=False,
+                    combine_runs:bool=False,
                     ):
         '''
         This class allows you to test multiple pipelines
@@ -119,6 +122,12 @@ class PipelineBasicSearchCV(BaseEstimator):
             functions. These functions should take the form:
             `func(labels, predictions)`.
         
+        - `metrics_probability`: `typing.Dict[str, typing.Callable]`:
+            A dictionary mapping the metric names to their callable
+            functions. These functions should take the form:
+            `func(labels, prediction_probabilities)`.
+            Defaults to `{}`.
+        
         - `cv`: sklearn splitting class, optional:
             This is the class that is used to produce the cross
             validation data. It should have the method
@@ -173,6 +182,13 @@ class PipelineBasicSearchCV(BaseEstimator):
             in results when using Leave-One-Out.
             Defaults to `False`.
         
+        - `combine_runs`: `bool`, optional:
+            Whether to combine the predictions 
+            over the runs before calculating 
+            the metrics. If `True`, `combine_splits`
+            must also be `True`.
+            Defaults to `False`.
+        
         '''
         #assert not cv is None, 'Currently cv=None is not supported. '\
         #                        'Please pass an initialised sklearn splitter.'
@@ -180,6 +196,7 @@ class PipelineBasicSearchCV(BaseEstimator):
         self.pipeline_names = pipeline_names
         self.name_to_object = name_to_object
         self.metrics = metrics
+        self.metrics_probability = metrics_probability
         self.cv = cv
         self.repeat = repeat
         self.verbose = verbose
@@ -189,6 +206,7 @@ class PipelineBasicSearchCV(BaseEstimator):
         self.split_runs = len(pipeline_names)
         self.n_jobs = n_jobs
         self.combine_splits = combine_splits
+        self.combine_runs=combine_runs
 
         return
 
@@ -208,9 +226,11 @@ class PipelineBasicSearchCV(BaseEstimator):
             train_idx,
             test_idx,
             ns,
+            nr,
             split_transform_on,
             pipeline,
             metrics,
+            metrics_probability,
             combine_splits,
             ):
             # data to split on
@@ -227,21 +247,30 @@ class PipelineBasicSearchCV(BaseEstimator):
             predictions_test, out_data_test = pipeline.predict(test_data, return_data_dict=True)
             labels_test = out_data_test[y]
 
+            if len(metrics_probability) > 0:
+                probabilities_train = pipeline.predict_proba(train_data)
+                probabilities_test = pipeline.predict_proba(test_data)
+            else:
+                probabilities_train = None
+                probabilities_test = None
+
             if combine_splits:
                 results_single_split = [
-                    [labels_train, predictions_train],
-                    [labels_test, predictions_test]
+                    [labels_train, predictions_train, probabilities_train],
+                    [labels_test, predictions_test, probabilities_test],
+                    ns,
+                    nr,
                     ]
 
             else:
+                # metrics
                 results_single_split = [
                         {
                             'metric': metric, 
                             'value': func(labels_test, predictions_test),
+                            'repeat_number': nr,
                             'split_number': ns,
                             'train_or_test': 'test',
-                            #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
-                            #'test_positve': np.sum(labels)/labels.shape[0],
                         } 
                         for metric, func in metrics.items()
                     ]
@@ -251,13 +280,39 @@ class PipelineBasicSearchCV(BaseEstimator):
                         {
                             'metric': metric, 
                             'value': func(labels_train, predictions_train),
+                            'repeat_number': nr,
                             'split_number': ns,
                             'train_or_test': 'train',
-                            #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
-                            #'test_positve': np.sum(labels)/labels.shape[0],
                         } 
                         for metric, func in metrics.items()
                     ])
+
+                # probability metrics
+
+                results_single_split.extend(
+                    [
+                        {
+                            'metric': metric, 
+                            'value': func(labels_train, probabilities_test),
+                            'repeat_number': nr,
+                            'split_number': ns,
+                            'train_or_test': 'train',
+                        } 
+                        for metric, func in metrics_probability.items()
+                    ])
+
+                results_single_split.extend(
+                    [
+                        {
+                            'metric': metric, 
+                            'value': func(labels_test, probabilities_train),
+                            'repeat_number': nr,
+                            'split_number': ns,
+                            'train_or_test': 'test',
+                        } 
+                        for metric, func in metrics_probability.items()
+                    ])
+
 
             return results_single_split
         
@@ -268,6 +323,7 @@ class PipelineBasicSearchCV(BaseEstimator):
                         split_transform_on=self.split_transform_on,
                         pipeline=pipeline,
                         metrics=self.metrics,
+                        metrics_probability=self.metrics_probability,
                         combine_splits=self.combine_splits
                         )
         try:
@@ -278,6 +334,7 @@ class PipelineBasicSearchCV(BaseEstimator):
                                         train_idx=train_idx,
                                         test_idx=test_idx,
                                         ns=ns,
+                                        nr=nr,
                                         ) for ns, (train_idx, test_idx) 
                                             in enumerate(
                                                 list(
@@ -287,7 +344,7 @@ class PipelineBasicSearchCV(BaseEstimator):
                                                         ]
                                                         )
                                                     )
-                                            )
+                                            ) for nr in range(self.repeat)
                                         )
             kbi = False
 
@@ -301,42 +358,137 @@ class PipelineBasicSearchCV(BaseEstimator):
             raise KeyboardInterrupt
 
         if self.combine_splits:
-            labels_train, predictions_train = [], []
-            labels_test, predictions_test = [], []
+            labels_train, predictions_train, probabilities_train = (
+                {nr:[] for nr in range(self.repeat)},
+                {nr:[] for nr in range(self.repeat)},
+                {nr:[] for nr in range(self.repeat)},)
+            labels_test, predictions_test, probabilities_test = (
+                {nr:[] for nr in range(self.repeat)},
+                {nr:[] for nr in range(self.repeat)},
+                {nr:[] for nr in range(self.repeat)},)
             for rss in results_single_split:
-                labels_train.append(rss[0][0])
-                predictions_train.append(rss[0][1])
-                labels_test.append(rss[1][0])
-                predictions_test.append(rss[1][1])
-                
-            labels_train = np.hstack(labels_train)
-            predictions_train = np.hstack(predictions_train)
-            labels_test = np.hstack(labels_test)
-            predictions_test = np.hstack(predictions_test)
+                ns = rss[2]
+                nr = rss[3]
+                labels_train[nr].append(rss[0][0])
+                predictions_train[nr].append(rss[0][1])
+                probabilities_train[nr].append(rss[1][2])
 
-            results_single_split = [
-                                    {
-                                    'metric': metric, 
-                                    'value': func(labels_test, predictions_test),
-                                    'split_number': np.nan,
-                                    'train_or_test': 'test',
-                                    #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
-                                    #'test_positve': np.sum(labels)/labels.shape[0],
-                                    } 
-                                    for metric, func in self.metrics.items()
-                                    ]
+                labels_test[nr].append(rss[1][0])
+                predictions_test[nr].append(rss[1][1])
+                probabilities_test[nr].append(rss[1][2])
 
-            results_single_split.extend([
-                                        {
-                                        'metric': metric, 
-                                        'value': func(labels_train, predictions_train),
-                                        'split_number': np.nan,
-                                        'train_or_test': 'train',
-                                        #'train_positve': np.sum(train_y_out)/train_y_out.shape[0],
-                                        #'test_positve': np.sum(labels)/labels.shape[0],
-                                        } 
-                                        for metric, func in self.metrics.items()
-                                        ])
+            for nr in range(self.repeat):
+
+                labels_train[nr] = np.concatenate(labels_train[nr], axis=0)
+                predictions_train[nr] = np.concatenate(predictions_train[nr], axis=0)
+                probabilities_train[nr] = np.concatenate(probabilities_train[nr], axis=0)
+                labels_test[nr] = np.concatenate(labels_test[nr], axis=0)
+                predictions_test[nr] = np.concatenate(predictions_test[nr], axis=0)
+                probabilities_test[nr] = np.concatenate(probabilities_test[nr], axis=0)
+
+            if self.combine_runs:
+
+                labels_train = np.concatenate(list(labels_train.values()), axis=0)
+                predictions_train = np.concatenate(list(predictions_train.values()), axis=0)
+                probabilities_train = np.concatenate(list(probabilities_train.values()), axis=0)
+                labels_test = np.concatenate(list(labels_test.values()), axis=0)
+                predictions_test = np.concatenate(list(predictions_test.values()), axis=0)
+                probabilities_test = np.concatenate(list(probabilities_test.values()), axis=0)
+
+                results_single_split = [
+                    {
+                        'metric': metric, 
+                        'value': func(labels_train, predictions_train),
+                        'repeat_number': np.nan,
+                        'split_number': np.nan,
+                        'train_or_test': 'train',
+                        } 
+                    for metric, func in self.metrics.items() 
+                    ]
+
+                results_single_split.extend([
+                    {
+                        'metric': metric, 
+                        'value': func(labels_test, predictions_test),
+                        'repeat_number': np.nan,
+                        'split_number': np.nan,
+                        'train_or_test': 'test',
+                        } 
+                    for metric, func in self.metrics.items()
+                    ])
+
+                results_single_split.extend([
+                    {
+                        'metric': metric, 
+                        'value': func(labels_train, probabilities_train),
+                        'repeat_number': np.nan,
+                        'split_number': np.nan,
+                        'train_or_test': 'train',
+                        } 
+                    for metric, func in self.metrics_probability.items()
+                    ])
+
+                results_single_split.extend([
+                    {
+                        'metric': metric, 
+                        'value': func(labels_test, probabilities_test),
+                        'repeat_number': np.nan,
+                        'split_number': np.nan,
+                        'train_or_test': 'test',
+                        } 
+                    for metric, func in self.metrics_probability.items()
+                    ])
+
+
+            else:
+                results_single_split = [
+                    {
+                        'metric': metric, 
+                        'value': func(labels_train[nr], predictions_train[nr]),
+                        'repeat_number': nr,
+                        'split_number': np.nan,
+                        'train_or_test': 'train',
+                        } 
+                    for metric, func in self.metrics.items() 
+                    for nr in range(self.repeat)
+                    ]
+
+                results_single_split.extend([
+                    {
+                        'metric': metric, 
+                        'value': func(labels_test[nr], predictions_test[nr]),
+                        'repeat_number': nr,
+                        'split_number': np.nan,
+                        'train_or_test': 'test',
+                        } 
+                    for metric, func in self.metrics.items()
+                    for nr in range(self.repeat)
+                    ])
+
+                results_single_split.extend([
+                    {
+                        'metric': metric, 
+                        'value': func(labels_train[nr], probabilities_train[nr]),
+                        'repeat_number': nr,
+                        'split_number': np.nan,
+                        'train_or_test': 'train',
+                        } 
+                    for metric, func in self.metrics_probability.items()
+                    for nr in range(self.repeat)
+                    ])
+
+                results_single_split.extend([
+                    {
+                        'metric': metric, 
+                        'value': func(labels_test[nr], probabilities_test[nr]),
+                        'repeat_number': nr,
+                        'split_number': np.nan,
+                        'train_or_test': 'test',
+                        } 
+                    for metric, func in self.metrics_probability.items()
+                    for nr in range(self.repeat)
+                    ])
+
             results_single_split = [results_single_split]
 
         return results_single_split
@@ -391,7 +543,7 @@ class PipelineBasicSearchCV(BaseEstimator):
 
     def fit(self,
             X:typing.Union[typing.Dict[str, np.ndarray], typing.Tuple[typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]],
-            y:str, 
+            y:str,
             ) -> pd.DataFrame:
         '''
         This function fits and predicts the pipelines, 
@@ -419,13 +571,14 @@ class PipelineBasicSearchCV(BaseEstimator):
         ---------
         - `results`: `pandas.DataFrame`:
             The results, with columns:
-            `['pipeline', 'split_number', 'metric', 
-            'value', 'splitter', 'params', 'train_id', 
+            `['pipeline', 'repeat_number', 'split_number', 
+            'metric', 'value', 'splitter', 'params', 'train_id', 
             'param_updates']`
         
         
         
         '''
+
 
         # check if train and val are pre split
         if self.cv is None:
@@ -452,16 +605,14 @@ class PipelineBasicSearchCV(BaseEstimator):
                                         )
 
         results = pd.DataFrame()
-        for ir in range(self.repeat):
-            self.repeat_n = ir
-            for pipeline_name in self.pipeline_names:
-                results_pipeline = self._param_test_pipeline(
-                                                    X=X,
-                                                    y=y,
-                                                    pipeline_name=pipeline_name,
-                                                    )
-                results_pipeline['repeat_number'] = self.repeat_n
-                results = pd.concat([results, results_pipeline])
+
+        for pipeline_name in self.pipeline_names:
+            results_pipeline = self._param_test_pipeline(
+                                                X=X,
+                                                y=y,
+                                                pipeline_name=pipeline_name,
+                                                )
+            results = pd.concat([results, results_pipeline])
         
         self.tqdm_progress.close()
 
@@ -513,14 +664,16 @@ class PipelineSearchCV(PipelineBasicSearchCV):
                     pipeline_names:typing.List[str],
                     name_to_object:typing.Dict[str, BaseEstimator],
                     metrics:typing.Dict[str, typing.Callable],
+                    metrics_probability:typing.Dict[str, typing.Callable]={},
                     cv=None,
                     repeat:int=1,
                     split_fit_on:typing.List[str]=['X', 'y'],
                     split_transform_on:typing.List[str]=['X', 'y'],
                     param_grid:typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Dict[str, typing.Any]]]=None,
                     verbose:bool=False,
-                    n_jobs=1,
-                    combine_splits=False,
+                    n_jobs:int=1,
+                    combine_splits:bool=False,
+                    combine_runs:bool=False,
                     ):
         '''
         This class allows you to test multiple pipelines
@@ -598,6 +751,12 @@ class PipelineSearchCV(PipelineBasicSearchCV):
             functions. These functions should take the form:
             `func(labels, predictions)`.
         
+        - `metrics_probability`: `typing.Dict[str, typing.Callable]`:
+            A dictionary mapping the metric names to their callable
+            functions. These functions should take the form:
+            `func(labels, prediction_probabilities)`.
+            Defaults to `{}`.
+        
         - `cv`: sklearn splitting class:
             This is the class that is used to produce the cross
             validation data. It should have the method
@@ -663,18 +822,27 @@ class PipelineSearchCV(PipelineBasicSearchCV):
             in results when using Leave-One-Out.
             Defaults to `False`. 
         
+        - `combine_runs`: `bool`, optional:
+            Whether to combine the predictions 
+            over the runs before calculating 
+            the metrics. If `True`, `combine_splits`
+            must also be `True`.
+            Defaults to `False`.
+        
         '''
 
         super().__init__(
             pipeline_names = pipeline_names,
             name_to_object = name_to_object,
             metrics = metrics,
+            metrics_probability=metrics_probability,
             cv = cv,
             repeat=repeat,
             verbose = verbose,
             split_fit_on = split_fit_on,
             split_transform_on = split_transform_on,
             combine_splits=combine_splits,
+            combine_runs=combine_runs,
             )
 
         # building a param grid and counting number of experiments
@@ -780,6 +948,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                     pipeline_names:typing.List[str],
                     name_to_object:typing.Dict[str, BaseEstimator],
                     metrics:typing.Dict[str, typing.Callable],
+                    metrics_probability:typing.Dict[str, typing.Callable]={},
                     cv=None,
                     repeat:int=1,
                     split_fit_on:typing.List[str]=['X', 'y'],
@@ -791,6 +960,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                     verbose:bool=False,
                     n_jobs:int=1,
                     combine_splits=False,
+                    combine_runs:bool=False,
                     ):
         '''
         This class allows you to test multiple pipelines
@@ -869,6 +1039,12 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
             A dictionary mapping the metric names to their callable
             functions. These functions should take the form:
             `func(labels, predictions)`.
+        
+        - `metrics_probability`: `typing.Dict[str, typing.Callable]`:
+            A dictionary mapping the metric names to their callable
+            functions. These functions should take the form:
+            `func(labels, prediction_probabilities)`.
+            Defaults to `{}`.
         
         - `cv`: sklearn splitting class:
             This is the class that is used to produce the cross
@@ -952,18 +1128,27 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
             in results when using Leave-One-Out.
             Defaults to `False`.
         
+        - `combine_runs`: `bool`, optional:
+            Whether to combine the predictions 
+            over the runs before calculating 
+            the metrics. If `True`, `combine_splits`
+            must also be `True`.
+            Defaults to `False`.
+        
         '''
 
         super().__init__(
             pipeline_names = pipeline_names,
             name_to_object = name_to_object,
             metrics = metrics,
+            metrics_probability=metrics_probability,
             cv = cv,
             repeat=repeat,
             verbose = verbose,
             split_fit_on = split_fit_on,
             split_transform_on = split_transform_on,
             combine_splits=combine_splits,
+            combine_runs=combine_runs,
             )
 
         # building a param grid and counting number of experiments
