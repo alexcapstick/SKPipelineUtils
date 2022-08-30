@@ -371,7 +371,7 @@ class PipelineBasicSearchCV(BaseEstimator):
                 nr = rss[3]
                 labels_train[nr].append(rss[0][0])
                 predictions_train[nr].append(rss[0][1])
-                probabilities_train[nr].append(rss[1][2])
+                probabilities_train[nr].append(rss[0][2])
 
                 labels_test[nr].append(rss[1][0])
                 predictions_test[nr].append(rss[1][1])
