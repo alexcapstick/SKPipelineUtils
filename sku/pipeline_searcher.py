@@ -371,29 +371,35 @@ class PipelineBasicSearchCV(BaseEstimator):
                 nr = rss[3]
                 labels_train[nr].append(rss[0][0])
                 predictions_train[nr].append(rss[0][1])
-                probabilities_train[nr].append(rss[0][2])
+                if len(self.metrics_probability) > 0:
+                    probabilities_train[nr].append(rss[0][2])
 
                 labels_test[nr].append(rss[1][0])
                 predictions_test[nr].append(rss[1][1])
-                probabilities_test[nr].append(rss[1][2])
+                if len(self.metrics_probability) > 0:
+                    probabilities_test[nr].append(rss[1][2])
 
             for nr in range(self.repeat):
 
                 labels_train[nr] = np.concatenate(labels_train[nr], axis=0)
                 predictions_train[nr] = np.concatenate(predictions_train[nr], axis=0)
-                probabilities_train[nr] = np.concatenate(probabilities_train[nr], axis=0)
+                if len(self.metrics_probability) > 0:
+                    probabilities_train[nr] = np.concatenate(probabilities_train[nr], axis=0)
                 labels_test[nr] = np.concatenate(labels_test[nr], axis=0)
                 predictions_test[nr] = np.concatenate(predictions_test[nr], axis=0)
-                probabilities_test[nr] = np.concatenate(probabilities_test[nr], axis=0)
+                if len(self.metrics_probability) > 0:
+                    probabilities_test[nr] = np.concatenate(probabilities_test[nr], axis=0)
 
             if self.combine_runs:
 
                 labels_train = np.concatenate(list(labels_train.values()), axis=0)
                 predictions_train = np.concatenate(list(predictions_train.values()), axis=0)
-                probabilities_train = np.concatenate(list(probabilities_train.values()), axis=0)
+                if len(self.metrics_probability) > 0:
+                    probabilities_train = np.concatenate(list(probabilities_train.values()), axis=0)
                 labels_test = np.concatenate(list(labels_test.values()), axis=0)
                 predictions_test = np.concatenate(list(predictions_test.values()), axis=0)
-                probabilities_test = np.concatenate(list(probabilities_test.values()), axis=0)
+                if len(self.metrics_probability) > 0:
+                    probabilities_test = np.concatenate(list(probabilities_test.values()), axis=0)
 
                 results_single_split = [
                     {
@@ -416,28 +422,29 @@ class PipelineBasicSearchCV(BaseEstimator):
                         } 
                     for metric, func in self.metrics.items()
                     ])
+                
+                if len(self.metrics_probability) > 0:
+                    results_single_split.extend([
+                        {
+                            'metric': metric, 
+                            'value': func(labels_train, probabilities_train),
+                            'repeat_number': np.nan,
+                            'split_number': np.nan,
+                            'train_or_test': 'train',
+                            } 
+                        for metric, func in self.metrics_probability.items()
+                        ])
 
-                results_single_split.extend([
-                    {
-                        'metric': metric, 
-                        'value': func(labels_train, probabilities_train),
-                        'repeat_number': np.nan,
-                        'split_number': np.nan,
-                        'train_or_test': 'train',
-                        } 
-                    for metric, func in self.metrics_probability.items()
-                    ])
-
-                results_single_split.extend([
-                    {
-                        'metric': metric, 
-                        'value': func(labels_test, probabilities_test),
-                        'repeat_number': np.nan,
-                        'split_number': np.nan,
-                        'train_or_test': 'test',
-                        } 
-                    for metric, func in self.metrics_probability.items()
-                    ])
+                    results_single_split.extend([
+                        {
+                            'metric': metric, 
+                            'value': func(labels_test, probabilities_test),
+                            'repeat_number': np.nan,
+                            'split_number': np.nan,
+                            'train_or_test': 'test',
+                            } 
+                        for metric, func in self.metrics_probability.items()
+                        ])
 
 
             else:
@@ -465,29 +472,31 @@ class PipelineBasicSearchCV(BaseEstimator):
                     for nr in range(self.repeat)
                     ])
 
-                results_single_split.extend([
-                    {
-                        'metric': metric, 
-                        'value': func(labels_train[nr], probabilities_train[nr]),
-                        'repeat_number': nr,
-                        'split_number': np.nan,
-                        'train_or_test': 'train',
-                        } 
-                    for metric, func in self.metrics_probability.items()
-                    for nr in range(self.repeat)
-                    ])
+                if len(self.metrics_probability) > 0:
+                        
+                    results_single_split.extend([
+                        {
+                            'metric': metric, 
+                            'value': func(labels_train[nr], probabilities_train[nr]),
+                            'repeat_number': nr,
+                            'split_number': np.nan,
+                            'train_or_test': 'train',
+                            } 
+                        for metric, func in self.metrics_probability.items()
+                        for nr in range(self.repeat)
+                        ])
 
-                results_single_split.extend([
-                    {
-                        'metric': metric, 
-                        'value': func(labels_test[nr], probabilities_test[nr]),
-                        'repeat_number': nr,
-                        'split_number': np.nan,
-                        'train_or_test': 'test',
-                        } 
-                    for metric, func in self.metrics_probability.items()
-                    for nr in range(self.repeat)
-                    ])
+                    results_single_split.extend([
+                        {
+                            'metric': metric, 
+                            'value': func(labels_test[nr], probabilities_test[nr]),
+                            'repeat_number': nr,
+                            'split_number': np.nan,
+                            'train_or_test': 'test',
+                            } 
+                        for metric, func in self.metrics_probability.items()
+                        for nr in range(self.repeat)
+                        ])
 
             results_single_split = [results_single_split]
 
@@ -502,6 +511,8 @@ class PipelineBasicSearchCV(BaseEstimator):
         Testing the whole pipeline, over the splits. This
         should be overwritten when using param grids.
         '''
+
+        self.tqdm_progress.set_postfix({'pm_n': pipeline_name.split('--')[-1]})
 
         results_pipeline = pd.DataFrame()
 
@@ -885,6 +896,8 @@ class PipelineSearchCV(PipelineBasicSearchCV):
         '''
         Testing the whole pipeline, over the splits and params.
         '''
+
+        self.tqdm_progress.set_postfix({'pm_n': pipeline_name.split('--')[-1]})
 
         results_pipeline = pd.DataFrame()
 
