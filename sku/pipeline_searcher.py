@@ -128,7 +128,7 @@ class PipelineBasicSearchCV(BaseEstimator):
             :code:`func(labels, prediction_probabilities)`.
             Defaults to :code:`{}`.
         
-        - cv: sklearn splitting class,, optional:
+        - cv: sklearn splitting class, optional:
             This is the class that is used to produce the cross
             validation data. It should have the method
             :code:`.split(X, y, event)`, which returns the indices
