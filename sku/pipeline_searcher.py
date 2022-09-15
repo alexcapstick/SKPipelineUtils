@@ -968,7 +968,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                     split_transform_on:typing.List[str]=['X', 'y'],
                     param_grid:typing.List[typing.Dict[str, typing.List[typing.Any]]]=None,
                     max_iter:int=10,
-                   , opt_metric:typing.Union[str, None]=None,
+                    opt_metric:typing.Union[str, None]=None,
                     minimise:bool=True,
                     verbose:bool=False,
                     n_jobs:int=1,
@@ -1110,7 +1110,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
             finding the, optimum params.
             Defaults to :code:`10`.
 
-        -, opt_metric: typing.Union[str, None], optional:
+        - opt_metric: typing.Union[str, None], optional:
             The metric values to use when determining the 
            , optimal parameters. If :code:`None`, the first
             metric given in :code:`metrics.keys()` will be used.
@@ -1190,7 +1190,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
 
         self.n_jobs = n_jobs
         self.max_iter = max_iter
-        self.opt_metric =, opt_metric if not, opt_metric is None else list(self.metrics.keys())[0]
+        self.opt_metric = opt_metric if not opt_metric is None else list(self.metrics.keys())[0]
         self.opt_result = {}
         self.minimise = 1 if minimise else -1
 
@@ -1211,14 +1211,14 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
 
         results_pipeline = []
 
-       , opt_params = [
+        opt_params = [
             list(d.items())[0] 
             for d in self.param_grid[pipeline_name]
             ]
-       , opt_params = [
+        opt_params = [
             {'name': items[0], 'low': items[1][0], 'high': items[1][1]} 
-            for items in, opt_params]
-        dims = [skopt.space.Real(**items) for items in, opt_params]
+            for items in opt_params]
+        dims = [skopt.space.Real(**items) for items in opt_params]
 
         def to_optimise(**params_update):
             pipeline = pipeline_constructor(pipeline_name,
@@ -1257,14 +1257,14 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                                     results_temp_df,
                                     )
             metric_opt = self.opt_metric
-           , opt_result = (results_temp_df.query(
+            opt_result = (results_temp_df.query(
                 "train_or_test == 'test' "\
                 "& metric == @metric_opt")
                 ['value']
                 .mean()
                 )
 
-            return, opt_result*self.minimise
+            return opt_result*self.minimise
 
         if not pipeline_name in self.opt_result:
             self.opt_result[pipeline_name] = []
