@@ -13,58 +13,58 @@ def train_test_group_split(*arrays,
                             ):
         '''
         This function returns the train and test data given the
-        split and the data. A single ```group``` will not be in
+        split and the data. A single :code:`group` will not be in
         both the training and testing set. You should use either
-        ```test_size``` or ```train_size``` but not both.
+        :code:`test_size` or :code:`train_size` but not both.
 
 
 
         Example
         ---------
-        ```
+        :code:`
         >>> (X_train, X_test, 
             y_train, y_test, 
             ids_train, ids_test) = train_test_group_split(X, y=y, group=group, test_size=0.33)
 
-        ```
+        :code:`
 
 
         Arguments
         ---------
 
-        - ```arrays```: ```array-like```, optional:
+        - arrays: array-like, optional:
             The data to split into training and testing sets. The labels and
-            the group should be passed to ```y``` and ```group``` respectively.
+            the group should be passed to :code:`y` and :code:`group` respectively.
 
-        - ```y```: ```array-like```, optional:
-            Label data with shape ```(n_samples)```, 
-            where ```n_samples``` is the number of samples. These are the
+        - y: array-like, optional:
+            Label data with shape :code:`(n_samples)`, 
+            where :code:`n_samples` is the number of samples. These are the
             labels that are used to group the data into either the training
             or testing set.
 
-        - ```group```: ```array-like```, optional:
-            Event data with shape ```(n_samples)```, 
-            where ```n_samples``` is the number of samples. These are the
+        - group: array-like, optional:
+            Event data with shape :code:`(n_samples)`, 
+            where :code:`n_samples` is the number of samples. These are the
             group ids that are used to group the data into either the training
             or testing set.
         
-        - ```test_size```: ```float```, optional:
+        - test_size: float, optional:
             This dictates the size of the outputted test set. This 
-            should be used if ```train_size=None```. If no ```test_size```
-            or ```train_size``` are given, then ```test_size``` will default
-            to ```0.25```
-            Defaults to ```None```.
+            should be used if :code:`train_size=None`. If no :code:`test_size`
+            or :code:`train_size` are given, then :code:`test_size` will default
+            to :code:`0.25`
+            Defaults to :code:`None`.
 
-        - ```train_size```: ```float```, optional:
+        - train_size: float, optional:
             This dictates the size of the outputted train set. This 
-            should be used if ```test_size=None```.
-            Defaults to ```None```.
+            should be used if :code:`test_size=None`.
+            Defaults to :code:`None`.
 
-        - ```shuffle```: ```bool```, optional:
+        - shuffle: bool, optional:
             dictates whether the data should be shuffled before the split
             is made.
         
-        - ```random_state```: ```None``` or ```int```, optional:
+        - random_state: None` or :code:`int, optional:
             This dictates the random seed that is used in the random
             operations for this function.
 
@@ -73,7 +73,7 @@ def train_test_group_split(*arrays,
         Returns
         ----------
 
-        - ```split arrays```: ```list```:
+        - split arrays: list:
             This is a list of the input data, split into the training and
             testing sets. See the Example for an understanding of the 
             order of the outputted arrays.
@@ -142,47 +142,48 @@ class DataPreSplit:
         
         Examples
         ---------
-        ```
-        >>> splitter = sku.DataPreSplit(
-                data=[
-                        (
-                            {'X': np.arange(10)}, 
-                            {'X': np.arange(5)}, 
-                            ),
-                        (
-                            {'X': np.arange(5)}, 
-                            {'X': np.arange(2)}, 
-                            ),
-                        (
-                            {'X': np.arange(2)}, 
-                            {'X': np.arange(3)}, 
-                            ),
-                    ],
-                split_fit_on=['X']
-                )
-        >>> X = splitter.reformat_X()
-        >>> for train_idx, val_idx in splitter.split(X['X']):
-                train_data, val_data = X['X'][train_idx], X['X'][val_idx]
-                do_things(train_data, val_data)
-        ```
+        .. code-block:: 
+
+            >>> splitter = sku.DataPreSplit(
+                    data=[
+                            (
+                                {'X': np.arange(10)}, 
+                                {'X': np.arange(5)}, 
+                                ),
+                            (
+                                {'X': np.arange(5)}, 
+                                {'X': np.arange(2)}, 
+                                ),
+                            (
+                                {'X': np.arange(2)}, 
+                                {'X': np.arange(3)}, 
+                                ),
+                        ],
+                    split_fit_on=['X']
+                    )
+            >>> X = splitter.reformat_X()
+            >>> for train_idx, val_idx in splitter.split(X['X']):
+                    train_data, val_data = X['X'][train_idx], X['X'][val_idx]
+                    do_things(train_data, val_data)
+
         
         Arguments
         ---------
         
-        - `data`: `typing.Union[ typing.List[ typing.Tuple[ typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]], typing.Tuple[ typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]]`: 
+        - data: typing.Union[ typing.List[ typing.Tuple[ typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]], typing.Tuple[ typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]]: 
             The pre-split data. Please ensure
             all splits have the same keys.
         
-        - `split_fit_on`: `typing.List[str]`, optional:
+        - split_fit_on: typing.List[str], optional:
             The labels in the data dictionaries to split
             the data on. 
-            Defaults to `['X', 'y']`.
+            Defaults to :code:`['X', 'y']`.
         
         
         Raises
         ---------
         
-            `TypeError`: If `data` is not a list or tuple.
+            :code:`TypeError: If :code:`data` is not a list or tuple.
         
         
         '''
@@ -214,7 +215,7 @@ class DataPreSplit:
     def reformat_X(self) -> typing.Dict[str, np.ndarray]:
         '''
         This reformats the X so that it can 
-        be split by the indices returned in `splits`.
+        be split by the indices returned in :code:`splits`.
         It essentially concatenates all of the data 
         dictionaries.
         
@@ -222,7 +223,7 @@ class DataPreSplit:
         Returns
         --------
         
-        - `out`: `typing.Dict[str, np.ndarray]` : 
+        - out: typing.Dict[str, np.ndarray]: 
             Dictionary containing concatenated 
             arrays from the pre-split data.
         
@@ -268,16 +269,16 @@ class DataPreSplit:
         Arguments
         ---------
         
-        - `groups`: `typing.Any`, optional:
+        - groups: typing.Any, optional:
             Ignored. 
-            Defaults to `None`.
+            Defaults to :code:`None`.
         
         
         
         Returns
         --------
         
-        - `out`: `int` : 
+        - out: int: 
             The number of splits.
         
         
@@ -298,25 +299,25 @@ class DataPreSplit:
         Arguments
         ---------
         
-        - `X`: `typing.Dict[str, np.ndarray]`: 
+        - X: typing.Dict[str, np.ndarray]: 
             A data dictionary that is only
             used to ensure that an array of the 
             right shape is being used for the splitting
             operation.
         
-        - `y`: `typing.Any`, optional:
+        - y: typing.Any, optional:
             Ignored. 
-            Defaults to `None`.
+            Defaults to :code:`None`.
         
-        - `groups`: `typing.Any`, optional:
+        - groups: typing.Any, optional:
             Ignored. 
-            Defaults to `None`.
+            Defaults to :code:`None`.
         
         
         Returns
         --------
         
-        - `out`: 
+        - out: 
             The train and test idices, wraped in a generator.
             See the Examples for an understanding of the output.
         

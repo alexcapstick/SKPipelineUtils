@@ -28,7 +28,7 @@ class _DropNaNRowsDD:
         Arguments
         ---------
         
-        - ```*args```: ```np.ndarray```:
+        - *args: np.ndarray:
             Arguments to find the NaN
             rows in.
         
@@ -54,12 +54,12 @@ class _DropNaNRowsDD:
         '''
         This will remove the NaN rows
         across all arguments based on the
-        rows found in the ```.fit()``` method.
+        rows found in the :code:`.fit()` method.
         
         Arguments
         ---------
 
-        - ```*args```: ```np.ndarray```:
+        - *args: np.ndarray:
             Arguments to filter the NaN
             rows from.
 
@@ -67,7 +67,7 @@ class _DropNaNRowsDD:
         Returns
         --------
         
-        - ```out```: ```typing.Union[list, np.ndarray]```:
+        - out: typing.Union[list, np.ndarray]:
             Arguments with same structure 
             as inputs.
         
@@ -130,7 +130,7 @@ class NumpyToDict(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
                 y:typing.Union[np.ndarray, None]=None) -> NumpyToDict:
         '''
         This will save the numpy arrays to the class, ready
-        to return them as a dictionary in the ```.transform()``` 
+        to return them as a dictionary in the :code:`.transform()` 
         method
         
         
@@ -138,13 +138,13 @@ class NumpyToDict(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         Arguments
         ---------
         
-        - ```X```: ```typing.Union[np.ndarray, None]```, optional:
+        - X: typing.Union[np.ndarray, None], optional:
             The inputs. 
-            Defaults to ```None```.
+            Defaults to :code:`None`.
         
-        - ```y```: ```typing.Union[np.ndarray, None]```, optional:
+        - y: typing.Union[np.ndarray, None], optional:
             The targets. 
-            Defaults to ```None```.
+            Defaults to :code:`None`.
         
         
         '''
@@ -161,19 +161,16 @@ class NumpyToDict(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         Arguments
         ---------
         
-        - ```X```: ```typing.Any```: 
+        - X: typing.Any: 
             Ignored.
-            Defaults to ```None```.
+            Defaults to :code:`None`.
         
         
         Returns
         --------
         
-        - ```out```: ```typing.Dict[str, np.ndarray]``` : 
-            A dictionary of the form:
-            ```
-            {'X': self.X, 'y': self.y}
-            ```
+        - out: typing.Dict[str, np.ndarray]: 
+            A dictionary of the form: :code:`{'X': self.X, 'y': self.y}`
         
         
         '''

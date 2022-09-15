@@ -45,11 +45,11 @@ intersphinx_disabled_domains = ['std']
 
 templates_path = ['_templates']
 
-# -- Options for HTML output
+# --, options for HTML output
 
 html_theme = 'sphinx_rtd_theme'
 
-# -- Options for EPUB output
+# --, options for EPUB output
 epub_show_urls = 'footnote'
 
 master_doc = 'index'
@@ -63,7 +63,7 @@ napoleon_use_admonition_for_examples = True
 
 import re
 
-def remove_default_value(app, what, name, obj, options, signature, return_annotation):
+def remove_default_value(app, what, name, obj,, options, signature, return_annotation):
     if signature:
         search = re.findall(r"(\w*)=", signature)
         if search:
@@ -71,7 +71,7 @@ def remove_default_value(app, what, name, obj, options, signature, return_annota
 
     return (signature, return_annotation)
 
-def skip(app, what, name, obj, would_skip, options):
+def skip(app, what, name, obj, would_skip,, options):
     if name == "__init__":
         return False
     return would_skip

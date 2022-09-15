@@ -9,22 +9,22 @@ def positive_split(labels:np.ndarray, predictions:None=None):
     Arguments
     ---------
     
-    - ```labels```: ```np.ndarray```: 
-        Labels should be from ```[0,1]``` or
-        ```[False, True]```.
+    - labels: np.ndarray: 
+        Labels should be from :code:`[0,1]` or
+        :code:`[False, True]`.
     
-    - ```predictions```: ```None```: 
+    - predictions: None: 
         Ignored.
-        Defaults to ```None```.
+        Defaults to :code:`None`.
     
     
     Returns
     --------
     
-    - ```out```: ```float``` : 
+    - out: float: 
         A proportion. This is calculated
         using the function 
-        ```np.sum(labels)/labels.shape[0]```.
+        :code:`np.sum(labels)/labels.shape[0]`.
     
     
     '''

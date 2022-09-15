@@ -18,7 +18,7 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         that accepts a dictionary containing the 
         data. This is useful to use when combining
         semi-supervised methods with 
-        ```sklearn.pipeline.Pipeline```.
+        :code:`sklearn.pipeline.Pipeline`.
         The model should not be initiated yet, and
         all arguments passed as positional or keyword
         arguments after the model is given.        
@@ -26,42 +26,42 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         Arguments
         ---------
         
-        - ```model```: ```typing.Any```: 
+        - model: typing.Any: 
             The model to wrap. This model must have
-            both ```.fit(X, y)``` and ```.predict(X)```.
+            both :code:`.fit(X, y)` and :code:`.predict(X)`.
             An example would be an abstracted pytorch model.
         
-        - ```fit_on```: ```typing.Union[typing.List[str], typing.List[typing.List[str]]]```: 
+        - fit_on: typing.Union[typing.List[str], typing.List[typing.List[str]]]: 
             This allows the user to define the keys in the data 
             dictionary that will be passed to the fit function.
             The outer list will be iterated over, and the inner
             list's keys will be used to get the data from the data dictionary,
             which will be passed in that order as positional arguments
-            to the ```.fit()``` function. Multiple inner lists
-            will cause the ```.fit()``` function to be called
+            to the :code:`.fit()` function. Multiple inner lists
+            will cause the :code:`.fit()` function to be called
             multiple times. If a list of strings is given then
             they will be wrapped in an outer list, meaning that 
-            one ```.fit()``` is called, with arguments corresponding
+            one :code:`.fit()` is called, with arguments corresponding
             to the keys given as strings.
-            Defaults to ```[['X', 'y']]```.
+            Defaults to :code:`[['X', 'y']]`.
 
-        - ```predict_on```: ```typing.Union[typing.List[str], typing.List[typing.List[str]]]```: 
+        - predict_on: typing.Union[typing.List[str], typing.List[typing.List[str]]]: 
             This allows the user to define the keys in the data 
             dictionary that will be passed to the fit function.
             The outer list will be iterated over, and the inner
             list's keys will be used to get the data from the data dictionary,
             which will be passed in that order as positional arguments
-            to the ```.predict()``` function. Multiple inner lists
-            will cause the ```.predict()``` function to be called
+            to the :code:`.predict()` function. Multiple inner lists
+            will cause the :code:`.predict()` function to be called
             multiple times, with each predict corresponding to the
             fitted object in each of the fit calls. If there are
-            more ```.predict()``` calls than ```.fit()``` calls,
+            more :code:`.predict()` calls than :code:`.fit()` calls,
             then the predict will be called on the beginning of the fit
             object list again (ie: the predict calls indefinitely 
             roll over the fit calls).
-            Defaults to ```[['X']]```.
+            Defaults to :code:`[['X']]`.
         
-        - ```*kwargs```: ```typing.Any```:
+        - *kwargs: typing.Any:
             Keyword arguments given to the model init.
         
         '''
@@ -128,16 +128,16 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         Arguments
         ---------
         
-        - ```deep```: ```bool```, optional:
+        - deep: bool, optional:
             Ignored. 
-            Defaults to ```True```.
+            Defaults to :code:`True`.
         
         
         
         Returns
         --------
         
-        - ```out```: ```dict``` : 
+        - out: dict: 
             Dictionary of parameters.
         
         
@@ -155,18 +155,18 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         Set the parameters of this estimator.
         The method works on simple estimators as well as on nested objects
         (such as :class:`~sklearn.pipeline.Pipeline`). The latter have
-        parameters of the form ``<component>__<parameter>`` so that it's
+        parameters of the form :code:``<component>__<parameter>`` so that it's
         possible to update each component of a nested object.
         
         Arguments
         ---------
         
-        - ```**params``` : ```dict```
+        - **params: dict`
             Estimator parameters.
         
         Returns
         ---------
-        - ```self``` : ```estimator``` instance
+        - self: estimator` instance
             Estimator instance.
 
         
@@ -204,29 +204,27 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         Arguments
         ---------
         
-        - ```X```: ```typing.Dict[str, np.ndarray]```: 
+        - X: typing.Dict[str, np.ndarray]: 
             A dictionary containing the data.
-            If ```X``` is a ```numpy.ndarray```, then 
-            the ```fit_on``` arguments will be ignored
-            and the model will be passed ```.fit(X,y)```.
+            If :code:`X` is a :code:`numpy.ndarray`, then 
+            the :code:`fit_on` arguments will be ignored
+            and the model will be passed :code:`.fit(X,y)`.
             In this case, consider using sklearn.
-            For example:
-            ```
-            X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
-            ```.
+            For example: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
+
         
-        - ```y```: ```None```, optional:
-            Ignored unless ```X``` is a ```numpy.ndarray```.
+        - y: None, optional:
+            Ignored unless :code:`X` is a :code:`numpy.ndarray`.
             If using a data dictionary, please pass labels 
-            in the dictionary to ```X```.
-            Defaults to ```None```.
+            in the dictionary to :code:`X`.
+            Defaults to :code:`None`.
         
         
         
         Returns
         --------
         
-        - ```self```: ```SKModelWrapperDD``` : 
+        - self: SKModelWrapperDD: 
             This object.
         
         
@@ -263,38 +261,36 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         Arguments
         ---------
         
-        - ```X```: ```typing.Dict[str, np.ndarray]```: 
+        - X: typing.Dict[str, np.ndarray]: 
             A dictionary containing the data.
-            If ```X``` is a ```numpy.ndarray```, then 
-            the ```predict_on``` arguments will be ignored
-            and the model will be passed ```.predict(X)```.
+            If :code:`X` is a :code:`numpy.ndarray`, then 
+            the :code:`predict_on` arguments will be ignored
+            and the model will be passed :code:`.predict(X)`.
             In this case, consider using sklearn. In addition,
             this will be performed on the first fitted model 
             if many are fitted.
-            For example:
-            ```
-            X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
-            ```.
+            For example: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
+
         
-        - ```return_data_dict```: ```bool```, optional: 
+        - return_data_dict: bool, optional: 
             Whether to return the ground truth with the output.
             This is useful if this model was part of a pipeline
             in which the labels are altered. This is ignored
-            if ```X``` is a ```numpy.ndarray```
-            Defaults to ```False```.
+            if :code:`X` is a :code:`numpy.ndarray`
+            Defaults to :code:`False`.
 
         
         Returns
         --------
         
-        - ```predictions```: ```numpy.ndarray``` : 
+        - predictions: numpy.ndarray: 
             The predictions, as a numpy array. If multiple
-            inner lists are given as ```predict_on```, then
+            inner lists are given as :code:`predict_on`, then
             a list of predictions will be returned.
         
-        - ```data_dict```: ```typing.Dict[str, np.ndarray]``` : 
+        - data_dict: typing.Dict[str, np.ndarray]: 
             The labels, as a numpy array. Only returned
-            if ```return_data_dict=True```.
+            if :code:`return_data_dict=True`.
         
 
         '''
@@ -337,38 +333,35 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         Arguments
         ---------
         
-        - ```X```: ```typing.Dict[str, np.ndarray]```: 
+        - X: typing.Dict[str, np.ndarray]: 
             A dictionary containing the data.
-            If ```X``` is a ```numpy.ndarray```, then 
-            the ```predict_on``` arguments will be ignored
-            and the model will be passed ```.predict_proba(X)```.
+            If :code:`X` is a :code:`numpy.ndarray`, then 
+            the :code:`predict_on` arguments will be ignored
+            and the model will be passed :code:`.predict_proba(X)`.
             In this case, consider using sklearn. In addition,
             this will be performed on the first fitted model 
             if many are fitted.
-            For example:
-            ```
-            X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
-            ```.
+            For example: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
         
-        - ```return_data_dict```: ```bool```, optional: 
+        - return_data_dict: bool, optional: 
             Whether to return the ground truth with the output.
             This is useful if this model was part of a pipeline
             in which the labels are altered. This is ignored
-            if ```X``` is a ```numpy.ndarray```
-            Defaults to ```False```.
+            if :code:`X` is a :code:`numpy.ndarray`
+            Defaults to :code:`False`.
 
         
         Returns
         --------
         
-        - ```predictions```: ```numpy.ndarray``` : 
+        - predictions: numpy.ndarray: 
             The predictions, as a numpy array. If multiple
-            inner lists are given as ```predict_on```, then
+            inner lists are given as :code:`predict_on`, then
             a list of predictions will be returned.
         
-        - ```data_dict```: ```typing.Dict[str, np.ndarray]``` : 
+        - data_dict: typing.Dict[str, np.ndarray]: 
             The labels, as a numpy array. Only returned
-            if ```return_data_dict=True```.
+            if :code:`return_data_dict=True`.
         
 
         '''

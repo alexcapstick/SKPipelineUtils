@@ -23,11 +23,11 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         in the fitting method, then the global statistics will
         be used to scale the data (global = across all groups).
 
-        Where the mean or standard deviation are equal to ```NaN```,
+        Where the mean or standard deviation are equal to :code:`NaN`,
         in any axis on any group, that particular value will be 
         replaced with the global mean or standard deviation for that
         axis (global = across all groups). If the standard deviation 
-        is returned as ```0.0``` then the global standard deviation 
+        is returned as :code:`0.0` then the global standard deviation 
         and mean is used.
         
         '''
@@ -53,19 +53,19 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         Arguments
         ---------
         
-        - ```X```: ```np.ndarray```: 
+        - X: np.ndarray: 
             The data used to compute the mean and standard deviation used for later
             scaling along the features axis. This should be of shape 
-            ```(n_samples, n_features)```.
+            :code:`(n_samples, n_features)`.
 
-        - ```y```: ```typing.Union[np.ndarray, None]```, optional:
+        - y: typing.Union[np.ndarray, None], optional:
             Igorned. 
-            Defaults to ```None```.
+            Defaults to :code:`None`.
 
-        - ```groups```: ```typing.Union[np.ndarray, None]```, optional:
+        - groups: typing.Union[np.ndarray, None], optional:
             The groups to split the scaling by. This should be of shape
-            ```(n_samples,)```.
-            Defaults to ```None```.
+            :code:`(n_samples,)`.
+            Defaults to :code:`None`.
         
 
         
@@ -74,7 +74,7 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         Returns
         --------
         
-        - ```self```: `sku.StandardGroupScaler`:
+        - self: sku.StandardGroupScaler:
             The fitted scaler.
         
         
@@ -135,26 +135,26 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         Arguments
         ---------
         
-        - ```X```: ```np.ndarray```: 
+        - X: np.ndarray: 
             The data used to scale along the features axis. This should be of shape 
-            ```(n_samples, n_features)```.
+            :code:`(n_samples, n_features)`.
 
-        - ```y```: ```typing.Union[np.ndarray, None]```, optional:
+        - y: typing.Union[np.ndarray, None], optional:
             Ignored. 
-            Defaults to ```None```.
+            Defaults to :code:`None`.
 
-        - ```groups```: ```typing.Union[np.ndarray, None]```, optional:
+        - groups: typing.Union[np.ndarray, None], optional:
             The groups to split the scaling by. This should be of shape
-            ```(n_samples,)```.
-            Defaults to ```None```.
+            :code:`(n_samples,)`.
+            Defaults to :code:`None`.
         
         
 
         Returns
         --------
         
-        - ```X_norm```: ```np.ndarray``` : 
-            The transformed version of ```X```.
+        - X_norm: np.ndarray: 
+            The transformed version of :code:`X`.
         
         
         '''
@@ -195,26 +195,26 @@ class StandardGroupScaler(sklearn.base.BaseEstimator, sklearn.base.TransformerMi
         Arguments
         ---------
         
-        - ```X```: ```np.ndarray```: 
+        - X: np.ndarray: 
             The data used to compute the mean and standard deviation used for later
             scaling along the features axis. This should be of shape 
-            ```(n_samples, n_features)```.
+            :code:`(n_samples, n_features)`.
         
-        - ```groups```: ```typing.Union[np.ndarray, None]```, optional:
+        - groups: typing.Union[np.ndarray, None], optional:
             The groups to split the scaling by. This should be of shape
-            ```(n_samples,)```.
-            Defaults to ```None```.
+            :code:`(n_samples,)`.
+            Defaults to :code:`None`.
         
-        - ```y```: ```typing.Union[np.ndarray, None]```, optional:
+        - y: typing.Union[np.ndarray, None], optional:
             Igorned. 
-            Defaults to ```None```.
+            Defaults to :code:`None`.
         
         
         
         Returns
         --------
         
-        - ```self```:
+        - self:
             The fitted scaler.
         
         
@@ -238,12 +238,12 @@ flatten_standard_scaler_doc = {
         '''
         This class allows you to scale the data to 0 mean and unit standard 
         deviation, based on statistics calculated over a flattened version 
-        of the array. The `start_dim` and `end_dim` allow you to 
+        of the array. The :code:`start_dim` and :code:`end_dim` allow you to 
         choose where to flatten the array. By default, the flattening
         will allow for mean values to calculated over an array 
         of shape (in_shape[0], -1). Please see the flattening operations
-        in `aml.preprocessing.transformation_functions.flatten` to 
-        understand the arguments `start_dim` and `end_dim`.
+        in :code:`aml.preprocessing.transformation_functions.flatten` to 
+        understand the arguments :code:`start_dim` and :code:`end_dim`.
         
         
         Examples
@@ -253,13 +253,13 @@ flatten_standard_scaler_doc = {
         Arguments
         ---------
         
-        - `start_dim`: `int`, optional:
+        - start_dim: int, optional:
             The first dim to flatten. 
-            Defaults to `0`.
+            Defaults to :code:`0`.
         
-        - `end_dim`: `int`, optional:
+        - end_dim: int, optional:
             The last dim to flatten. 
-            Defaults to `-1`.
+            Defaults to :code:`-1`.
         
         '''),
 
@@ -271,20 +271,20 @@ flatten_standard_scaler_doc = {
         Arguments
         ---------
         
-        - `X`: `np.ndarray`: 
+        - X: np.ndarray: 
             The data used to compute the mean and standard deviation used for later
             scaling along the features axis. This should be of shape 
-            `(n_samples, n_features)`.
+            :code:`(n_samples, n_features)`.
 
-        - `y`: `typing.Union[np.ndarray, None]`, optional:
+        - y: typing.Union[np.ndarray, None], optional:
             Igorned. 
-            Defaults to `None`.
+            Defaults to :code:`None`.
 
 
         Returns
         --------
         
-        - `self`: `FlattenStandardScalerOld`:
+        - self: FlattenStandardScalerOld:
             The fitted scaler.
         
         
@@ -298,16 +298,16 @@ flatten_standard_scaler_doc = {
         Arguments
         ---------
         
-        - `X`: `np.ndarray`: 
+        - X: np.ndarray: 
             The data used to scale along the features axis. This should be of shape 
-            `(n_samples, n_features)`.
+            :code:`(n_samples, n_features)`.
        
 
         Returns
         --------
         
-        - `X_norm`: `np.ndarray`: 
-            The transformed version of `X`.
+        - X_norm: np.ndarray: 
+            The transformed version of :code:`X`.
         
         
         '''),
@@ -338,40 +338,41 @@ class Flatten(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         '''
         This class allows you to flatten an array inside a pipeline.
         This class was implemented to mirror the behaviour in 
-        `https://pytorch.org/docs/stable/generated/torch.flatten.html`.
+        :code:`https://pytorch.org/docs/stable/generated/torch.flatten.html`.
         
         
         Examples
         ---------
-        ```
-        >>> flat = Flatten(start_dim=1, end_dim=-1)
-        >>> flat.fit(None, None) # ignored
-        >>> flat.transform(
-                [[[1, 2],
-                  [3, 4]],
-                 [[5, 6],
-                  [7, 8]]]
-                )
-        [[1,2,3,4],
-         [5,6,7,8]]
-        ```
+        .. code-block:: 
+
+            >>> flat = Flatten(start_dim=1, end_dim=-1)
+            >>> flat.fit(None, None) # ignored
+            >>> flat.transform(
+                    [[[1, 2],
+                    [3, 4]],
+                    [[5, 6],
+                    [7, 8]]]
+                    )
+            [[1,2,3,4],
+            [5,6,7,8]]
+
         
         Arguments
         ---------
         
-        - `start_dim`: `int`, optional:
+        - start_dim: int, optional:
             The first dim to flatten. 
-            Defaults to `0`.
+            Defaults to :code:`0`.
         
-        - `end_dim`: `int`, optional:
+        - end_dim: int, optional:
             The last dim to flatten. 
-            Defaults to `-1`.
+            Defaults to :code:`-1`.
         
-        - `copy`: `bool`, optional:
+        - copy: bool, optional:
             Whether to return a copied version
             of the array during the transform
             method.
-            Defaults to `False`.
+            Defaults to :code:`False`.
         
         '''
         if end_dim != -1: 
@@ -392,19 +393,19 @@ class Flatten(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         Arguments
         ---------
         
-        - ```X```: 
+        - X: 
             Ignored.
-            Defaults to ```None```.
+            Defaults to :code:`None`.
 
-        - ```y```:
+        - y:
             Igorned. 
-            Defaults to ```None```.
+            Defaults to :code:`None`.
         
 
         Returns
         --------
         
-        - ```self```:
+        - self:
             The fitted scaler.
         
         
@@ -423,13 +424,13 @@ class Flatten(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         Arguments
         ---------
         
-        - `X`: `np.ndarray`: 
+        - X: np.ndarray: 
             The array to be flattened.
         
         Returns
         --------
         
-        - `out`: `np.ndarray` : 
+        - out: np.ndarray: 
             The flattened array.
         
         
@@ -476,12 +477,12 @@ class FlattenStandardScalerOld(sklearn.base.BaseEstimator, sklearn.base.Transfor
         '''
         This class allows you to scale the data to 0 mean and unit standard 
         deviation, based on statistics calculated over a flattened version 
-        of the array. The `start_dim` and `end_dim` allow you to 
+        of the array. The :code:`start_dim` and :code:`end_dim` allow you to 
         choose where to flatten the array. By default, the flattening
         will allow for mean values to calculated over an array 
         of shape (in_shape[0], -1). Please see the flattening operations
-        in `aml.preprocessing.transformation_functions.flatten` to 
-        understand the arguments `start_dim` and `end_dim`.
+        in :code:`aml.preprocessing.transformation_functions.flatten` to 
+        understand the arguments :code:`start_dim` and :code:`end_dim`.
         
         
         Examples
@@ -491,13 +492,13 @@ class FlattenStandardScalerOld(sklearn.base.BaseEstimator, sklearn.base.Transfor
         Arguments
         ---------
         
-        - `start_dim`: `int`, optional:
+        - start_dim: int, optional:
             The first dim to flatten. 
-            Defaults to `0`.
+            Defaults to :code:`0`.
         
-        - `end_dim`: `int`, optional:
+        - end_dim: int, optional:
             The last dim to flatten. 
-            Defaults to `-1`.
+            Defaults to :code:`-1`.
         
         '''
         
@@ -520,20 +521,20 @@ class FlattenStandardScalerOld(sklearn.base.BaseEstimator, sklearn.base.Transfor
         Arguments
         ---------
         
-        - `X`: `np.ndarray`: 
+        - X: np.ndarray: 
             The data used to compute the mean and standard deviation used for later
             scaling along the features axis. This should be of shape 
-            `(n_samples, n_features)`.
+            :code:`(n_samples, n_features)`.
 
-        - `y`: `typing.Union[np.ndarray, None]`, optional:
+        - y: typing.Union[np.ndarray, None], optional:
             Igorned. 
-            Defaults to `None`.
+            Defaults to :code:`None`.
 
 
         Returns
         --------
         
-        - `self`: `FlattenStandardScalerOld`:
+        - self: FlattenStandardScalerOld:
             The fitted scaler.
         
         
@@ -561,16 +562,16 @@ class FlattenStandardScalerOld(sklearn.base.BaseEstimator, sklearn.base.Transfor
         Arguments
         ---------
         
-        - `X`: `np.ndarray`: 
+        - X: np.ndarray: 
             The data used to scale along the features axis. This should be of shape 
-            `(n_samples, n_features)`.
+            :code:`(n_samples, n_features)`.
        
 
         Returns
         --------
         
-        - `X_norm`: `np.ndarray`: 
-            The transformed version of `X`.
+        - X_norm: np.ndarray: 
+            The transformed version of :code:`X`.
         
         
         '''

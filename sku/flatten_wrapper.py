@@ -23,60 +23,61 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         a flattening operation. By default, the flattening
         will allow for shape (in_shape[0], -1). Please see the 
         flattening operations in 
-        `aml.preprocessing.transformation_functions.flatten` to 
-        understand the arguments `start_dim` and `end_dim`.
+        :code:`aml.preprocessing.transformation_functions.flatten` to 
+        understand the arguments :code:`start_dim` and :code:`end_dim`.
 
         
         
         Examples
         ---------
-        ```
-        >>> flatten_scaler = FlattenWrapper(
-                                StandardScaler, 
-                                unflatten_transform=True,
-                                )
-        >>> flatten_scaler.fit(x)
-        >>> flatten_scaler.transform(x)
-        ```
+        .. code-block:: 
+
+            >>> flatten_scaler = FlattenWrapper(
+                                    StandardScaler, 
+                                    unflatten_transform=True,
+                                    )
+            >>> flatten_scaler.fit(x)
+            >>> flatten_scaler.transform(x)
+            
 
 
 
         Arguments
         ---------
         
-        - `estimator`: `typing.Any`:
+        - estimator: typing.Any:
             The transformer or model that
             requires a flattening of the
             before fit and transform or predict.
-            Defaults to `None`.
+            Defaults to :code:`None`.
 
-        - `start_dim`: `int`, optional:
+        - start_dim: int, optional:
             The first dim to flatten. 
-            Defaults to `0`.
+            Defaults to :code:`0`.
         
-        - `end_dim`: `int`, optional:
+        - end_dim: int, optional:
             The last dim to flatten. 
-            Defaults to `-1`.
+            Defaults to :code:`-1`.
         
-        - `flatten_idx`: `int`, optional:
+        - flatten_idx: int, optional:
             The index of the call on fit
             and transform/predict that contains
             the array that requires flattening.
-            Defaults to `0`.
+            Defaults to :code:`0`.
         
-        - `unflatten_transform`: `bool`, optional:
+        - unflatten_transform: bool, optional:
             Return an unflattened version of the
             transformed array. If the output
             is a numpy array, then this will 
             unflattened directly. If the output
-            is a list or tuple, then the `flatten_idx` of
+            is a list or tuple, then the :code:`flatten_idx` of
             the output will be unflattened.
-            Defaults to `True`.
+            Defaults to :code:`True`.
 
-        - `**kwargs`: optional:
+        - **kwargs:, optional:
             The keywords that will be passed
             to the estimator init function.
-            Defaults to `{}`.
+            Defaults to :code:`{}`.
 
         '''
 
@@ -137,16 +138,16 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         Arguments
         ---------
         
-        - ```deep```: ```bool```, optional:
+        - deep: bool, optional:
             Ignored. 
-            Defaults to ```True```.
+            Defaults to :code:`True`.
         
         
         
         Returns
         --------
         
-        - ```out```: ```dict``` : 
+        - out: dict: 
             Dictionary of parameters.
         
         
@@ -165,18 +166,18 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         Set the parameters of this estimator.
         The method works on simple estimators as well as on nested objects
         (such as :class:`~sklearn.pipeline.Pipeline`). The latter have
-        parameters of the form ``<component>__<parameter>`` so that it's
+        parameters of the form :code:``<component>__<parameter>`` so that it's
         possible to update each component of a nested object.
         
         Arguments
         ---------
         
-        - ```**params``` : ```dict```
+        - **params: dict:
             Estimator parameters.
         
         Returns
         ---------
-        - ```self``` : ```estimator``` instance
+        - self: estimator instance
             Estimator instance.
 
         
@@ -203,14 +204,14 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         Arguments
         ---------
         
-        - `args`:
+        - args:
             Arguments passed to the estimator when fitting.
 
 
         Returns
         --------
         
-        - `self`: `FlattenWrapper`:
+        - self: FlattenWrapper:
             The fitted estimator.
         
         
@@ -240,14 +241,14 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         Arguments
         ---------
         
-        - `args`:
+        - args:
             Arguments passed to the estimator when transforming.
 
 
         Returns
         --------
         
-        - `args_out`: `FlattenWrapper`:
+        - args_out: FlattenWrapper:
             The transformed input.
         
         
@@ -292,14 +293,14 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         Arguments
         ---------
         
-        - `args`:
+        - args:
             Arguments passed to the estimator when predicting.
 
 
         Returns
         --------
         
-        - `args_out`: `FlattenWrapper`:
+        - args_out: FlattenWrapper:
             The prediction input.
         
         
@@ -334,14 +335,14 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         Arguments
         ---------
         
-        - `args`:
+        - args:
             Arguments passed to the estimator when predicting.
 
 
         Returns
         --------
         
-        - `args_out`: `FlattenWrapper`:
+        - args_out: FlattenWrapper:
             The probability prediction input.
         
         

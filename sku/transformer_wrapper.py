@@ -21,73 +21,67 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         that accepts a dictionary containing the 
         data. This is useful to use when combining
         semi-supervised methods with 
-        ```sklearn.pipeline.Pipeline```.
+        :code:`sklearn.pipeline.Pipeline`.
         
         
         Arguments
         ---------
         
-        - ```transformer```: ```typing.Any```: 
+        - transformer: typing.Any: 
             The transformer to wrap. This transformer must have
-            both ```.fit(X, y)``` and ```.transform(X)```.
+            both :code:`.fit(X, y)` and :code:`.transform(X)`.
             An example would be a custom transformer
             that uses data dictionaries.
         
-        - ```fit_on```: ```typing.Union[typing.List[str], typing.List[typing.List[str]]]```: 
+        - fit_on: typing.Union[typing.List[str], typing.List[typing.List[str]]]: 
             This allows the user to define the keys in the data 
             dictionary that will be passed to the fit function.
             The outer list will be iterated over, and the inner
             list's keys will be used to get the data from the data dictionary,
             which will be passed in that order as positional arguments
-            to the ```.fit()``` function. Multiple inner lists
-            will cause the ```.fit()``` function to be called
+            to the :code:`.fit()` function. Multiple inner lists
+            will cause the :code:`.fit()` function to be called
             multiple times, with each fitted version being saved as
             a unique object in this class. If a list of strings is given then
             they will be wrapped in an outer list, meaning that 
-            one ```.fit()``` is called, with arguments corresponding
+            one :code:`.fit()` is called, with arguments corresponding
             to the keys given as strings.
-            Defaults to ```[['X', 'y']]```.
+            Defaults to :code:`[['X', 'y']]`.
 
-        - ```transform_on```: ```typing.Union[typing.List[str], typing.List[typing.List[str]]]```: 
+        - transform_on: typing.Union[typing.List[str], typing.List[typing.List[str]]]: 
             This allows the user to define the keys in the data 
             dictionary that will be passed to the fit function.
             The outer list will be iterated over, and the inner
             list's keys will be used to get the data from the data dictionary,
             which will be passed in that order as positional arguments
-            to the ```.transform()``` function. Multiple inner lists
-            will cause the ```.transform()``` function to be called
+            to the :code:`.transform()` function. Multiple inner lists
+            will cause the :code:`.transform()` function to be called
             multiple times, with each transform corresponding to the
             fitted object in each of the fit calls. If there are
-            more ```.transform()``` calls than ```.fit()``` calls,
+            more :code:`.transform()` calls than :code:`.fit()` calls,
             then the transform will be called on the beginning of the fit
             object list again (ie: the transform calls indefinitely 
             roll over the fit calls). The first key in each inner list
-            will be overwritten with the result from ```.transform()```,
-            unless ```all_key_transform=True```.
+            will be overwritten with the result from :code:`.transform()`,
+            unless :code:`all_key_transform=True`.
             If a list of strings is given then
             they will be wrapped in an outer list, meaning that 
-            one ```.transform()``` is called, with arguments corresponding
+            one :code:`.transform()` is called, with arguments corresponding
             to the keys given as strings.
-            Defaults to ```[['X']]```.
+            Defaults to :code:`[['X']]`.
         
-        - ```all_key_transform```: ```bool```, optional:
+        - all_key_transform: bool, optional:
             This dictates whether the transformer being wrapped
             will output a result for all of the arguments given to 
             it. In this case, each of the values corresponding to the
             keys being transformed on, will be replaced by the 
-            corresponding output of the wrapped transform. If ```False```,
+            corresponding output of the wrapped transform. If :code:`False`,
             only the first key will be transformed.
-            ie: 
-            ```
-            x, y, z = self.wrapped_transform(x, y, z)
-            ```
-            rather than:
-            ```
-            x = self.wrapped_transform(x, y, z)
-            ```
-            Defaults to ```False```.
+            ie: :code:`x, y, z = self.wrapped_transform(x, y, z)`
+            rather than: :code:`x = self.wrapped_transform(x, y, z)`
+            Defaults to :code:`False`.
 
-        - ```**kwargs```: ```typing.Any```:
+        - **kwargs: typing.Any:
             Keyword arguments given to the transformer.
         
         '''
@@ -161,16 +155,16 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         Arguments
         ---------
         
-        - ```deep```: ```bool```, optional:
+        - deep: bool, optional:
             Ignored. 
-            Defaults to ```True```.
+            Defaults to :code:`True`.
         
         
         
         Returns
         --------
         
-        - ```out```: ```dict``` : 
+        - out: dict: 
             Dictionary of parameters.
         
         
@@ -188,18 +182,18 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         Set the parameters of this estimator.
         The method works on simple estimators as well as on nested objects
         (such as :class:`~sklearn.pipeline.Pipeline`). The latter have
-        parameters of the form ``<component>__<parameter>`` so that it's
+        parameters of the form :code:``<component>__<parameter>`` so that it's
         possible to update each component of a nested object.
         
         Arguments
         ---------
         
-        - ```**params``` : ```dict```
+        - **params: dict`
             Estimator parameters.
         
         Returns
         ---------
-        - ```self``` : ```estimator``` instance
+        - self: estimator` instance
             Estimator instance.
 
         
@@ -235,28 +229,25 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         Arguments
         ---------
         
-        - ```X```: ```typing.Dict[str, np.ndarray]```: 
+        - X: typing.Dict[str, np.ndarray]: 
             A dictionary containing the data.
-            If ```X``` is a ```numpy.ndarray```, then 
-            the ```fit_on``` arguments will be ignored
-            and the transformer will be passed ```.fit(X,y)```.
+            If :code:`X` is a :code:`numpy.ndarray`, then 
+            the :code:`fit_on` arguments will be ignored
+            and the transformer will be passed :code:`.fit(X,y)`.
             In this case, consider using sklearn.
-            For example:
-            ```
-            X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
-            ```.
+            For example: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
         
-        - ```y```: ```None```, optional:
-            Ignored unless ```X``` is a ```numpy.ndarray```.
+        - y: None, optional:
+            Ignored unless :code:`X` is a :code:`numpy.ndarray`.
             If using a data dictionary, please pass labels 
-            in the dictionary to ```X```.
-            Defaults to ```None```.
+            in the dictionary to :code:`X`.
+            Defaults to :code:`None`.
         
         
         Returns
         --------
         
-        - ```self```: ```SKTransformerWrapperDD``` : 
+        - self: SKTransformerWrapperDD: 
             This object.
         
         
@@ -291,26 +282,23 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         Arguments
         ---------
         
-        - ```X```: ```typing.Dict[str, np.ndarray]```: 
+        - X: typing.Dict[str, np.ndarray]: 
             A dictionary containing the data.
-            If ```X``` is a ```numpy.ndarray```, then 
-            the ```transform_on``` arguments will be ignored
-            and the model will be passed ```.transform(X)```.
+            If :code:`X` is a :code:`numpy.ndarray`, then 
+            the :code:`transform_on` arguments will be ignored
+            and the model will be passed :code:`.transform(X)`.
             In this case, consider using sklearn. In addition,
             this will be performed on the first fitted model 
             if many are fitted.
-            For example:
-            ```
-            X = {'X': X_DATA, 'y': Y_DATA, **kwargs}
-            ```.
+            For example:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
         
         
         Returns
         --------
         
-        - ```X_out```: ```typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]]``` : 
-            The data dictionary, with stucture the same as ```X```,
-             with transformed ```X``` data.
+        - X_out: typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]]: 
+            The data dictionary, with stucture the same as :code:`X`,
+             with transformed :code:`X` data.
         
 
         '''

@@ -15,7 +15,7 @@ def get_default_args(func:typing.Callable):
     Arguments
     ---------
     
-    - ```func```: ```typing.Callable```:
+    - func: typing.Callable:
         Function to get parameter defaults for.
     
     
@@ -23,7 +23,7 @@ def get_default_args(func:typing.Callable):
     Returns
     --------
     
-    - ```out```: ```_type_``` : 
+    - out: _type_: 
         _description_
     
     
@@ -53,7 +53,7 @@ def partialclass_pickleable(name, cls, *args, **kwds):
         '__init__': functools.partialmethod(cls.__init__, *args, **kwds)
     })
 
-    # The following is copied nearly ad verbatim from `namedtuple's` source.
+    # The following is copied nearly ad verbatim from :code:`namedtuple's` source.
     """
     # For pickling to work, the __module__ variable needs to be set to the frame
     # where the named tuple is created.  Bypass this step in enviroments where

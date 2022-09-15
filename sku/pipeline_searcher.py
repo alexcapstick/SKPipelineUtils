@@ -65,129 +65,129 @@ class PipelineBasicSearchCV(BaseEstimator):
         Example
         ---------
 
-        ```
-        name_to_object = {
-                            'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
-                                                        fit_on=['X', 'y'],
-                                                        predict_on=['X'],
-                                                        ),
-                            'standard_scaler': sku.SKTransformerWrapperDD(StandardScaler, 
-                                                        fit_on=['X'], 
-                                                        transform_on=['X'],
-                                                        ),
-                            }
-        pipeline_names = [
-                            'standard_scaler--gbt',
-                            'gbt'
-                        ]
-        metrics = {
-                    'accuracy': accuracy_score, 
-                    'recall': recall_score, 
-                    'precision': precision_score,
-                    'f1': f1_score,
-                    }
-        splitter = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1024)
+        .. code-block:: 
+            name_to_object = {
+                                'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
+                                                            fit_on=['X', 'y'],
+                                                            predict_on=['X'],
+                                                            ),
+                                'standard_scaler': sku.SKTransformerWrapperDD(StandardScaler, 
+                                                            fit_on=['X'], 
+                                                            transform_on=['X'],
+                                                            ),
+                                }
+            pipeline_names = [
+                                'standard_scaler--gbt',
+                                'gbt'
+                            ]
+            metrics = {
+                        'accuracy': accuracy_score, 
+                        'recall': recall_score, 
+                        'precision': precision_score,
+                        'f1': f1_score,
+                        }
+            splitter = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1024)
 
-        pscv = PipelineBasicSearchCV(pipeline_names=pipeline_names,
-                                    name_to_object=name_to_object,
-                                    metrics=metrics,
-                                    cv=splitter,
-                                    split_fit_on=['X', 'y'],
-                                    split_transform_on=['X', 'y', 'id'],
-                                    verbose=True,
-                                    )
-        X_data = {
-                    'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
-                    'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
-                    }
-        results = pscv.fit(X_data)
-        ```
+            pscv = PipelineBasicSearchCV(pipeline_names=pipeline_names,
+                                        name_to_object=name_to_object,
+                                        metrics=metrics,
+                                        cv=splitter,
+                                        split_fit_on=['X', 'y'],
+                                        split_transform_on=['X', 'y', 'id'],
+                                        verbose=True,
+                                        )
+            X_data = {
+                        'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
+                        'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
+                        }
+            results = pscv.fit(X_data)
+
 
         Arguments
         ---------
 
-        - `pipeline_names`: `typing.List[str]`:
+        - pipeline_names: typing.List[str]:
             This is a list of strings that describe the pipelines
-            An example would be `standard_scaler--ae--mlp`.
+            An example would be :code:`standard_scaler--ae--mlp`.
             The objects, separated by '--' should be keys in 
-            `name_to_object`.
+            :code:`name_to_object`.
         
-        - `name_to_object`: `typing.Dict[str, BaseEstimator]`:
-            A dictionary mapping the keys in `pipeline_names` to
+        - name_to_object: typing.Dict[str, BaseEstimator]:
+            A dictionary mapping the keys in :code:`pipeline_names` to
             the objects that will be used as transformers and 
             models in the pipeline.
         
-        - `metrics`: `typing.Dict[str, typing.Callable]`:
+        - metrics: typing.Dict[str, typing.Callable]:
             A dictionary mapping the metric names to their callable
             functions. These functions should take the form:
-            `func(labels, predictions)`.
+            :code:`func(labels, predictions)`.
         
-        - `metrics_probability`: `typing.Dict[str, typing.Callable]`:
+        - metrics_probability: typing.Dict[str, typing.Callable]:
             A dictionary mapping the metric names to their callable
             functions. These functions should take the form:
-            `func(labels, prediction_probabilities)`.
-            Defaults to `{}`.
+            :code:`func(labels, prediction_probabilities)`.
+            Defaults to :code:`{}`.
         
-        - `cv`: sklearn splitting class, optional:
+        - cv: sklearn splitting class,, optional:
             This is the class that is used to produce the cross
             validation data. It should have the method
-            `.split(X, y, event)`, which returns the indices
+            :code:`.split(X, y, event)`, which returns the indices
             of the training and testing set, and the method 
-            `get_n_splits()`, which should return the number
+            :code:`get_n_splits()`, which should return the number
             of splits that this splitter was indended to make.
-            Alternatively, if you pass `None`, or an integer, in which
+            Alternatively, if you pass :code:`None`, or an integer, in which
             case you may pass the training and validation data 
-            dictionaries themselves, in a tuple `(data_train, data_val)`
-            to the `fit` method in place of the argument `X`. This
+            dictionaries themselves, in a tuple :code:`(data_train, data_val)`
+            to the :code:`fit` method in place of the argument :code:`X`. This
             is currently only possible with a single split.
-            Defaults to `None`.
+            Defaults to :code:`None`.
 
-        - `repeat`: `int`, optional:
+        - repeat: int, optional:
             The number of times to repeat the 
             experiment.
-            Defaults to `1`.  
+            Defaults to :code:`1`.  
 
-        - `split_fit_on`: `typing.List[str]`, optional:
+        - split_fit_on: typing.List[str], optional:
             The keys corresponding to the values in 
-            the data dictionary passed in `.fit()`
-            that the `cv` will take as positional
-            arguments to the `split()` function.
-            Defaults to `['X', 'y']`.        
+            the data dictionary passed in :code:`.fit()`
+            that the :code:`cv` will take as positional
+            arguments to the :code:`split()` function.
+            Defaults to :code:`['X', 'y']`.        
 
-        - `split_transform_on`: `typing.List[str]`, optional:
+        - split_transform_on: typing.List[str], optional:
             The keys corresponding to the values in 
-            the data dictionary passed in `.fit()`
-            that the `cv` will split into training 
+            the data dictionary passed in :code:`.fit()`
+            that the :code:`cv` will split into training 
             and testing data. This allows you to 
             split data that isn't used in finding the
             splitting indices.
-            Defaults to `['X', 'y']`.               
+            Defaults to :code:`['X', 'y']`.               
         
-        - `verbose`: `bool`, optional:
+        - verbose: bool, optional:
             Whether to print progress as the models are being tested.
-            Remeber that you might also need to change the verbose options
-            in each of the objects given in `name_to_object`.
-            Defaults to `False`.     
+            Remeber that you might also need to change the verbose, options
+            in each of the objects given in :code:`name_to_object`.
+            Defaults to :code:`False`.     
         
-        - `n_jobs`: `int`, optional:
-            The number of parallel jobs. `-1` will run the 
+        - n_jobs: int, optional:
+            The number of parallel jobs. :code:`-1` will run the 
             searches on all cores, but will incur significant memory 
             and cpu cost.
-            Defaults to `1`.     
+            Defaults to :code:`1`.     
         
-        - `combine_splits`: `bool`, optional:
+        - combine_splits: bool, optional:
             Whether to combine the predictions 
             over the splits before calculating 
             the metrics. This can help reduce the variance
             in results when using Leave-One-Out.
-            Defaults to `False`.
+            Defaults to :code:`False`.
         
-        - `combine_runs`: `bool`, optional:
+        - combine_runs: bool, optional:
             Whether to combine the predictions 
             over the runs before calculating 
-            the metrics. If `True`, `combine_splits`
-            must also be `True`.
-            Defaults to `False`.
+            the metrics. If :code:`True`, :code:`combine_splits`
+            must also be :code:`True`.
+            Defaults to :code:`False`.
         
         '''
         #assert not cv is None, 'Currently cv=None is not supported. '\
@@ -558,31 +558,31 @@ class PipelineBasicSearchCV(BaseEstimator):
             ) -> pd.DataFrame:
         '''
         This function fits and predicts the pipelines, 
-        with the optional parameters and splitting 
+        with the, optional parameters and splitting 
         arguments and produces a table of results
         given the metrics.
 
         Arguments
         ---------
 
-        - `X`: `typing.Union[typing.Dict[str, np.ndarray], typing.Tuple[typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]]`:
+        - X: typing.Union[typing.Dict[str, np.ndarray], typing.Tuple[typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]]:
             The data dictionary that will be used to run
             the experiments. This may also be a tuple of 
             data dictionaries used for training and validation
-            splits if `cv=None`. In this case, you may also pass
+            splits if :code:`cv=None`. In this case, you may also pass
             a list of tuples of data dictionaries in the form
-            `[(data_train, data_val), (data_train, data_val), ...]`, 
-            where `data_train` and `data_val` are data dictionaries.
+            :code:`[(data_train, data_val), (data_train, data_val), ...]`, 
+            where :code:`data_train` and :code:`data_val` are data dictionaries.
         
-        - `y` : `str`:
+        - y: str:
             Please either pass a string, which corresponds to the 
-            key in `X` which contains the labels.
+            key in :code:`X` which contains the labels.
         
         Returns
         ---------
-        - `results`: `pandas.DataFrame`:
+        - results: pandas.DataFrame:
             The results, with columns:
-            `['pipeline', 'repeat_number', 'split_number', 
+            :code:`['pipeline', 'repeat_number', 'split_number', 
             'metric', 'value', 'splitter', 'params', 'train_id', 
             'param_updates']`
         
@@ -694,151 +694,151 @@ class PipelineSearchCV(PipelineBasicSearchCV):
         on these pipelines. A parameter grid can also be passed, allowing
         the user to test multiple configurations of each pipeline.
         This class allows you to perform a grid search over the parameters
-        given in `param_grid`.
+        given in :code:`param_grid`.
 
         Example
         ---------
 
-        ```
-        name_to_object = {
-                            'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
-                                                        fit_on=['X', 'y'],
-                                                        predict_on=['X'],
-                                                        ),
-                            'standard_scaler': sku.SKTransformerWrapperDD(StandardScaler, 
-                                                        fit_on=['X'], 
-                                                        transform_on=['X'],
-                                                        ),
-                            }
-        pipeline_names = [
-                            'standard_scaler--gbt',
-                            'gbt'
-                        ]
-        metrics = {
-                    'accuracy': accuracy_score, 
-                    'recall': recall_score, 
-                    'precision': precision_score,
-                    'f1': f1_score,
-                    }
-        splitter = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1024)
+        .. code-block:: 
+            name_to_object = {
+                                'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
+                                                            fit_on=['X', 'y'],
+                                                            predict_on=['X'],
+                                                            ),
+                                'standard_scaler': sku.SKTransformerWrapperDD(StandardScaler, 
+                                                            fit_on=['X'], 
+                                                            transform_on=['X'],
+                                                            ),
+                                }
+            pipeline_names = [
+                                'standard_scaler--gbt',
+                                'gbt'
+                            ]
+            metrics = {
+                        'accuracy': accuracy_score, 
+                        'recall': recall_score, 
+                        'precision': precision_score,
+                        'f1': f1_score,
+                        }
+            splitter = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1024)
 
-        pscv = PipelineSearchCV(pipeline_names=pipeline_names,
-                                    name_to_object=name_to_object,
-                                    metrics=metrics,
-                                    cv=splitter,
-                                    split_fit_on=['X', 'y'],
-                                    split_transform_on=['X', 'y', 'id'],
-                                    verbose=True,
-                                    param_grid={
-                                                'gbt__learning_rate':[0.1, 0.01],
-                                                'gbt__max_depth':[3, 10],
-                                                },
-                                    )
-        X_data = {
-                    'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
-                    'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
-                    }
-        results = pscv.fit(X_data)
-        ```
+            pscv = PipelineSearchCV(pipeline_names=pipeline_names,
+                                        name_to_object=name_to_object,
+                                        metrics=metrics,
+                                        cv=splitter,
+                                        split_fit_on=['X', 'y'],
+                                        split_transform_on=['X', 'y', 'id'],
+                                        verbose=True,
+                                        param_grid={
+                                                    'gbt__learning_rate':[0.1, 0.01],
+                                                    'gbt__max_depth':[3, 10],
+                                                    },
+                                        )
+            X_data = {
+                        'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
+                        'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
+                        }
+            results = pscv.fit(X_data)
+
 
 
         
         Arguments
         ---------
 
-        - `pipeline_names`: `typing.List[str]`:
+        - pipeline_names: typing.List[str]:
             This is a list of strings that describe the pipelines
-            An example would be `standard_scaler--ae--mlp`.
+            An example would be :code:`standard_scaler--ae--mlp`.
             The objects, separated by '--' should be keys in 
-            `name_to_object`.
+            :code:`name_to_object`.
         
-        - `name_to_object`: `typing.Dict[str, BaseEstimator]`:
-            A dictionary mapping the keys in `pipeline_names` to
+        - name_to_object: typing.Dict[str, BaseEstimator]:
+            A dictionary mapping the keys in :code:`pipeline_names` to
             the objects that will be used as transformers and 
             models in the pipeline.
         
-        - `metrics`: `typing.Dict[str, typing.Callable]`:
+        - metrics: typing.Dict[str, typing.Callable]:
             A dictionary mapping the metric names to their callable
             functions. These functions should take the form:
-            `func(labels, predictions)`.
+            :code:`func(labels, predictions)`.
         
-        - `metrics_probability`: `typing.Dict[str, typing.Callable]`:
+        - metrics_probability: typing.Dict[str, typing.Callable]:
             A dictionary mapping the metric names to their callable
             functions. These functions should take the form:
-            `func(labels, prediction_probabilities)`.
-            Defaults to `{}`.
+            :code:`func(labels, prediction_probabilities)`.
+            Defaults to :code:`{}`.
         
-        - `cv`: sklearn splitting class:
+        - cv: sklearn splitting class:
             This is the class that is used to produce the cross
             validation data. It should have the method
-            `.split(X, y, event)`, which returns the indices
+            :code:`.split(X, y, event)`, which returns the indices
             of the training and testing set, and the method 
-            `get_n_splits()`, which should return the number
+            :code:`get_n_splits()`, which should return the number
             of splits that this splitter was indended to make.
-            Defaults to `None`.
+            Defaults to :code:`None`.
 
-        - `repeat`: `int`, optional:
+        - repeat: int, optional:
             The number of times to repeat the 
             experiment.
-            Defaults to `1`.  
+            Defaults to :code:`1`.  
 
-        - `split_fit_on`: `typing.List[str]`:
+        - split_fit_on: typing.List[str]:
             The keys corresponding to the values in 
-            the data dictionary passed in `.fit()`
-            that the `cv` will take as positional
-            arguments to the `split()` function.
-            Defaults to `['X', 'y']`.        
+            the data dictionary passed in :code:`.fit()`
+            that the :code:`cv` will take as positional
+            arguments to the :code:`split()` function.
+            Defaults to :code:`['X', 'y']`.        
 
-        - `split_transform_on`: `typing.List[str]`:
+        - split_transform_on: typing.List[str]:
             The keys corresponding to the values in 
-            the data dictionary passed in `.fit()`
-            that the `cv` will split into training 
+            the data dictionary passed in :code:`.fit()`
+            that the :code:`cv` will split into training 
             and testing data. This allows you to 
             split data that isn't used in finding the
             splitting indices.
-            Defaults to `['X', 'y']`.        
+            Defaults to :code:`['X', 'y']`.        
 
-        - `param_grid`: `typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Dict[str, typing.Any]]]`:
+        - param_grid: typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Dict[str, typing.Any]]]:
             A dictionary or list of dictionaries that 
             are used as a parameter grid for testing performance
             of pipelines with multiple hyper-parameters. This should
             be of the usual format given to 
-            `sklearn.model_selection.ParameterGrid` when 
-            used with `sklearn.pipeline.Pipeline`.
-            If `None`, then the pipeline is tested with 
+            :code:`sklearn.model_selection.ParameterGrid` when 
+            used with :code:`sklearn.pipeline.Pipeline`.
+            If :code:`None`, then the pipeline is tested with 
             the parameters given to the objects in 
-            `name_to_object`.
+            :code:`name_to_object`.
             All pipelines will be tested with the given parameters
             in addition to the parameter grid passed.
             Only those parameters relevant to a pipeline
             will be used.
-            Defaults to `None`.        
+            Defaults to :code:`None`.        
         
-        - `verbose`: `bool`:
+        - verbose: bool:
             Whether to print progress as the models are being tested.
-            Remeber that you might also need to change the verbose options
-            in each of the objects given in `name_to_object`.
-            Defaults to `False`.     
+            Remeber that you might also need to change the verbose, options
+            in each of the objects given in :code:`name_to_object`.
+            Defaults to :code:`False`.     
         
-        - `n_jobs`: `int`:
-            The number of parallel jobs. `-1` will run the 
+        - n_jobs: int:
+            The number of parallel jobs. :code:`-1` will run the 
             searches on all cores, but will incur significant memory 
             and cpu cost.
-            Defaults to `1`.    
+            Defaults to :code:`1`.    
         
-        - `combine_splits`: `bool`, optional:
+        - combine_splits: bool, optional:
             Whether to combine the predictions 
             over the splits before calculating 
             the metrics. This can help reduce the variance
             in results when using Leave-One-Out.
-            Defaults to `False`. 
+            Defaults to :code:`False`. 
         
-        - `combine_runs`: `bool`, optional:
+        - combine_runs: bool, optional:
             Whether to combine the predictions 
             over the runs before calculating 
-            the metrics. If `True`, `combine_splits`
-            must also be `True`.
-            Defaults to `False`.
+            the metrics. If :code:`True`, :code:`combine_splits`
+            must also be :code:`True`.
+            Defaults to :code:`False`.
         
         '''
 
@@ -968,7 +968,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                     split_transform_on:typing.List[str]=['X', 'y'],
                     param_grid:typing.List[typing.Dict[str, typing.List[typing.Any]]]=None,
                     max_iter:int=10,
-                    opt_metric:typing.Union[str, None]=None,
+                   , opt_metric:typing.Union[str, None]=None,
                     minimise:bool=True,
                     verbose:bool=False,
                     n_jobs:int=1,
@@ -983,170 +983,170 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
         on these pipelines. A parameter grid can also be passed, allowing
         the user to test multiple configurations of each pipeline.
         This class allows you to perform a bayesian parameter search over 
-        the parameters given in `param_grid`.
+        the parameters given in :code:`param_grid`.
         Note: At the moment this only supports real value param searches.
 
         Example
         ---------
 
-        ```
-        name_to_object = {
-                            'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
-                                                        fit_on=['X', 'y'],
-                                                        predict_on=['X'],
-                                                        ),
-                            'standard_scaler': sku.SKTransformerWrapperDD(StandardScaler, 
-                                                        fit_on=['X'], 
-                                                        transform_on=['X'],
-                                                        ),
-                            }
-        pipeline_names = [
-                            'standard_scaler--gbt',
-                            'gbt'
-                        ]
-        metrics = {
-                    'accuracy': accuracy_score, 
-                    'recall': recall_score, 
-                    'precision': precision_score,
-                    'f1': f1_score,
-                    }
-        splitter = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1024)
+        .. code-block:: 
+            name_to_object = {
+                                'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
+                                                            fit_on=['X', 'y'],
+                                                            predict_on=['X'],
+                                                            ),
+                                'standard_scaler': sku.SKTransformerWrapperDD(StandardScaler, 
+                                                            fit_on=['X'], 
+                                                            transform_on=['X'],
+                                                            ),
+                                }
+            pipeline_names = [
+                                'standard_scaler--gbt',
+                                'gbt'
+                            ]
+            metrics = {
+                        'accuracy': accuracy_score, 
+                        'recall': recall_score, 
+                        'precision': precision_score,
+                        'f1': f1_score,
+                        }
+            splitter = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1024)
 
-        pscv = PipelineBayesSearchCV(pipeline_names=pipeline_names,
-                                    name_to_object=name_to_object,
-                                    metrics=metrics,
-                                    cv=splitter,
-                                    split_fit_on=['X', 'y'],
-                                    split_transform_on=['X', 'y', 'id'],
-                                    verbose=True,
-                                    param_grid= [
-                                        {'flatten_gbt__learning_rate': [5, 20]},
-                                        {'flatten_standard_scaler__with_mean': [True, False]},
-                                        {'flatten_mlp__dropout': [0.2, 0.9]},
-                                        ],
-                                    )
-        X_data = {
-                    'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
-                    'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
-                    }
-        results = pscv.fit(X_data)
-        ```
+            pscv = PipelineBayesSearchCV(pipeline_names=pipeline_names,
+                                        name_to_object=name_to_object,
+                                        metrics=metrics,
+                                        cv=splitter,
+                                        split_fit_on=['X', 'y'],
+                                        split_transform_on=['X', 'y', 'id'],
+                                        verbose=True,
+                                        param_grid= [
+                                            {'flatten_gbt__learning_rate': [5, 20]},
+                                            {'flatten_standard_scaler__with_mean': [True, False]},
+                                            {'flatten_mlp__dropout': [0.2, 0.9]},
+                                            ],
+                                        )
+            X_data = {
+                        'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
+                        'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
+                        }
+            results = pscv.fit(X_data)
+
 
 
         
         Arguments
         ---------
 
-        - `pipeline_names`: `typing.List[str]`:
+        - pipeline_names: typing.List[str]:
             This is a list of strings that describe the pipelines
-            An example would be `standard_scaler--ae--mlp`.
+            An example would be :code:`standard_scaler--ae--mlp`.
             The objects, separated by '--' should be keys in 
-            `name_to_object`.
+            :code:`name_to_object`.
         
-        - `name_to_object`: `typing.Dict[str, BaseEstimator]`:
-            A dictionary mapping the keys in `pipeline_names` to
+        - name_to_object: typing.Dict[str, BaseEstimator]:
+            A dictionary mapping the keys in :code:`pipeline_names` to
             the objects that will be used as transformers and 
             models in the pipeline.
         
-        - `metrics`: `typing.Dict[str, typing.Callable]`:
+        - metrics: typing.Dict[str, typing.Callable]:
             A dictionary mapping the metric names to their callable
             functions. These functions should take the form:
-            `func(labels, predictions)`.
+            :code:`func(labels, predictions)`.
         
-        - `metrics_probability`: `typing.Dict[str, typing.Callable]`:
+        - metrics_probability: typing.Dict[str, typing.Callable]:
             A dictionary mapping the metric names to their callable
             functions. These functions should take the form:
-            `func(labels, prediction_probabilities)`.
-            Defaults to `{}`.
+            :code:`func(labels, prediction_probabilities)`.
+            Defaults to :code:`{}`.
         
-        - `cv`: sklearn splitting class:
+        - cv: sklearn splitting class:
             This is the class that is used to produce the cross
             validation data. It should have the method
-            `.split(X, y, event)`, which returns the indices
+            :code:`.split(X, y, event)`, which returns the indices
             of the training and testing set, and the method 
-            `get_n_splits()`, which should return the number
+            :code:`get_n_splits()`, which should return the number
             of splits that this splitter was indended to make.
-            Defaults to `None`.
+            Defaults to :code:`None`.
 
-        - `repeat`: `int`, optional:
+        - repeat: int, optional:
             The number of times to repeat the 
             experiment.
-            Defaults to `1`.  
+            Defaults to :code:`1`.  
 
-        - `split_fit_on`: `typing.List[str]`:
+        - split_fit_on: typing.List[str]:
             The keys corresponding to the values in 
-            the data dictionary passed in `.fit()`
-            that the `cv` will take as positional
-            arguments to the `split()` function.
-            Defaults to `['X', 'y']`.        
+            the data dictionary passed in :code:`.fit()`
+            that the :code:`cv` will take as positional
+            arguments to the :code:`split()` function.
+            Defaults to :code:`['X', 'y']`.        
 
-        - `split_transform_on`: `typing.List[str]`:
+        - split_transform_on: typing.List[str]:
             The keys corresponding to the values in 
-            the data dictionary passed in `.fit()`
-            that the `cv` will split into training 
+            the data dictionary passed in :code:`.fit()`
+            that the :code:`cv` will split into training 
             and testing data. This allows you to 
             split data that isn't used in finding the
             splitting indices.
-            Defaults to `['X', 'y']`.        
+            Defaults to :code:`['X', 'y']`.        
 
-        - `param_grid`: `typing.List[typing.Dict[str, typing.List[typing.Any]]]`:
+        - param_grid: typing.List[typing.Dict[str, typing.List[typing.Any]]]:
             A dictionary or list of dictionaries that 
             are used as a parameter grid for testing performance
             of pipelines with multiple hyper-parameters. This should
             be of the usual format given to 
-            `sklearn.model_selection.ParameterGrid` when 
-            used with `sklearn.pipeline.Pipeline`.
-            If `None`, then the pipeline is tested with 
+            :code:`sklearn.model_selection.ParameterGrid` when 
+            used with :code:`sklearn.pipeline.Pipeline`.
+            If :code:`None`, then the pipeline is tested with 
             the parameters given to the objects in 
-            `name_to_object`.
+            :code:`name_to_object`.
             All pipelines will be tested with the given parameters
             in addition to the parameter grid passed.
             Only those parameters relevant to a pipeline
             will be used.
-            Defaults to `None`.  
+            Defaults to :code:`None`.  
 
-        - `max_iter`: `int`, optional:
+        - max_iter: int, optional:
             The number of calls to make on each pipeline when
-            finding the optimum params.
-            Defaults to `10`.
+            finding the, optimum params.
+            Defaults to :code:`10`.
 
-        - `opt_metric`: `typing.Union[str, None]`, optional:
+        -, opt_metric: typing.Union[str, None], optional:
             The metric values to use when determining the 
-            optimal parameters. If `None`, the first
-            metric given in `metrics.keys()` will be used.
-            If a `str`, this should be a key in `metrics`.
-            Defaults to `None`.
+           , optimal parameters. If :code:`None`, the first
+            metric given in :code:`metrics.keys()` will be used.
+            If a :code:`str`, this should be a key in :code:`metrics`.
+            Defaults to :code:`None`.
         
-        - `minimise`: `bool`, optional:
-            Whether to minimise the metric given in `opt_metric`.
-            If `False`, the metric will be maximised.
-            Defaults to `True`.
+        - minimise: bool, optional:
+            Whether to minimise the metric given in :code:`opt_metric`.
+            If :code:`False`, the metric will be maximised.
+            Defaults to :code:`True`.
         
-        - `verbose`: `bool`:
+        - verbose: bool:
             Whether to print progress as the models are being tested.
-            Remeber that you might also need to change the verbose options
-            in each of the objects given in `name_to_object`.
-            Defaults to `False`.     
+            Remeber that you might also need to change the verbose, options
+            in each of the objects given in :code:`name_to_object`.
+            Defaults to :code:`False`.     
         
-        - `n_jobs`: `int`:
-            The number of parallel jobs. `-1` will run the 
+        - n_jobs: int:
+            The number of parallel jobs. :code:`-1` will run the 
             searches on all cores, but will incur significant memory 
             and cpu cost.
-            Defaults to `1`.     
+            Defaults to :code:`1`.     
         
-        - `combine_splits`: `bool`, optional:
+        - combine_splits: bool, optional:
             Whether to combine the predictions 
             over the splits before calculating 
             the metrics. This can help reduce the variance
             in results when using Leave-One-Out.
-            Defaults to `False`.
+            Defaults to :code:`False`.
         
-        - `combine_runs`: `bool`, optional:
+        - combine_runs: bool, optional:
             Whether to combine the predictions 
             over the runs before calculating 
-            the metrics. If `True`, `combine_splits`
-            must also be `True`.
-            Defaults to `False`.
+            the metrics. If :code:`True`, :code:`combine_splits`
+            must also be :code:`True`.
+            Defaults to :code:`False`.
         
         '''
 
@@ -1190,7 +1190,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
 
         self.n_jobs = n_jobs
         self.max_iter = max_iter
-        self.opt_metric = opt_metric if not opt_metric is None else list(self.metrics.keys())[0]
+        self.opt_metric =, opt_metric if not, opt_metric is None else list(self.metrics.keys())[0]
         self.opt_result = {}
         self.minimise = 1 if minimise else -1
 
@@ -1211,14 +1211,14 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
 
         results_pipeline = []
 
-        opt_params = [
+       , opt_params = [
             list(d.items())[0] 
             for d in self.param_grid[pipeline_name]
             ]
-        opt_params = [
+       , opt_params = [
             {'name': items[0], 'low': items[1][0], 'high': items[1][1]} 
-            for items in opt_params]
-        dims = [skopt.space.Real(**items) for items in opt_params]
+            for items in, opt_params]
+        dims = [skopt.space.Real(**items) for items in, opt_params]
 
         def to_optimise(**params_update):
             pipeline = pipeline_constructor(pipeline_name,
@@ -1257,14 +1257,14 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                                     results_temp_df,
                                     )
             metric_opt = self.opt_metric
-            opt_result = (results_temp_df.query(
+           , opt_result = (results_temp_df.query(
                 "train_or_test == 'test' "\
                 "& metric == @metric_opt")
                 ['value']
                 .mean()
                 )
 
-            return opt_result*self.minimise
+            return, opt_result*self.minimise
 
         if not pipeline_name in self.opt_result:
             self.opt_result[pipeline_name] = []
