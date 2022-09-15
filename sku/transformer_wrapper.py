@@ -290,7 +290,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             In this case, consider using sklearn. In addition,
             this will be performed on the first fitted model 
             if many are fitted.
-            For example:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
+            For example: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
         
         
         Returns
