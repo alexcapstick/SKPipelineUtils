@@ -66,6 +66,7 @@ class PipelineBasicSearchCV(BaseEstimator):
         ---------
 
         .. code-block:: 
+
             name_to_object = {
                                 'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
                                                             fit_on=['X', 'y'],
@@ -109,7 +110,7 @@ class PipelineBasicSearchCV(BaseEstimator):
         - pipeline_names: typing.List[str]:
             This is a list of strings that describe the pipelines
             An example would be :code:`standard_scaler--ae--mlp`.
-            The objects, separated by '--' should be keys in 
+            The objects, separated by :code:'--' should be keys in 
             :code:`name_to_object`.
         
         - name_to_object: typing.Dict[str, BaseEstimator]:
@@ -749,7 +750,7 @@ class PipelineSearchCV(PipelineBasicSearchCV):
         - pipeline_names: typing.List[str]:
             This is a list of strings that describe the pipelines
             An example would be :code:`standard_scaler--ae--mlp`.
-            The objects, separated by '--' should be keys in 
+            The objects, separated by :code:'--' should be keys in 
             :code:`name_to_object`.
         
         - name_to_object: typing.Dict[str, BaseEstimator]:
@@ -1040,7 +1041,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
         - pipeline_names: typing.List[str]:
             This is a list of strings that describe the pipelines
             An example would be :code:`standard_scaler--ae--mlp`.
-            The objects, separated by '--' should be keys in 
+            The objects, separated by :code:'--' should be keys in 
             :code:`name_to_object`.
         
         - name_to_object: typing.Dict[str, BaseEstimator]:
