@@ -10,6 +10,8 @@ class PipelineDD(Pipeline):
     def fit(self, 
             X:typing.Dict[str, np.ndarray], 
             y:None=None,
+            *args, 
+            **kwargs,
             ) -> PipelineDD:
         '''
         This will fit the pipeline.
@@ -48,7 +50,7 @@ class PipelineDD(Pipeline):
         
         '''
 
-        return super().fit(X, y)
+        return super().fit(X, y, *args, **kwargs,)
 
 
     def transform(
@@ -71,6 +73,8 @@ class PipelineDD(Pipeline):
 
     def predict(self, 
                 X:typing.Dict[str, np.ndarray],
+                *args, 
+                **kwargs,
                 ) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
         '''
         This will predict using the fitted pipeline.
@@ -102,7 +106,7 @@ class PipelineDD(Pipeline):
 
         '''
 
-        return super().predict(X)
+        return super().predict(X, *args, **kwargs)
 
 
     def score(

@@ -581,6 +581,7 @@ class PipelineBasicSearchCV(BaseEstimator):
         
         Returns
         ---------
+
         - results: pandas.DataFrame:
             The results, with columns:
             :code:`['pipeline', 'repeat_number', 'split_number', 
@@ -701,6 +702,7 @@ class PipelineSearchCV(PipelineBasicSearchCV):
         ---------
 
         .. code-block:: 
+
             name_to_object = {
                                 'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
                                                             fit_on=['X', 'y'],
@@ -942,10 +944,47 @@ class PipelineSearchCV(PipelineBasicSearchCV):
 
         return results_pipeline
 
+    def fit(self,
+            X:typing.Union[typing.Dict[str, np.ndarray], typing.Tuple[typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]],
+            y:str,
+            ) -> pd.DataFrame:
+        '''
+        This function fits and predicts the pipelines, 
+        with the, optional parameters and splitting 
+        arguments and produces a table of results
+        given the metrics.
+
+        Arguments
+        ---------
+
+        - X: typing.Union[typing.Dict[str, np.ndarray], typing.Tuple[typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]]:
+            The data dictionary that will be used to run
+            the experiments. This may also be a tuple of 
+            data dictionaries used for training and validation
+            splits if :code:`cv=None`. In this case, you may also pass
+            a list of tuples of data dictionaries in the form
+            :code:`[(data_train, data_val), (data_train, data_val), ...]`, 
+            where :code:`data_train` and :code:`data_val` are data dictionaries.
+        
+        - y: str:
+            Please either pass a string, which corresponds to the 
+            key in :code:`X` which contains the labels.
+        
+        Returns
+        ---------
+
+        - results: pandas.DataFrame:
+            The results, with columns:
+            :code:`['pipeline', 'repeat_number', 'split_number', 
+            'metric', 'value', 'splitter', 'params', 'train_id', 
+            'param_updates']`
+        
+        
+        
+        '''
 
 
-
-
+        return super().fit(X, y)
 
 
 
@@ -991,6 +1030,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
         ---------
 
         .. code-block:: 
+
             name_to_object = {
                                 'gbt': sku.SKModelWrapperDD(HistGradientBoostingClassifier,
                                                             fit_on=['X', 'y'],
@@ -1290,3 +1330,45 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
         results_pipeline = pd.concat(results_pipeline)
 
         return results_pipeline
+
+    def fit(self,
+            X:typing.Union[typing.Dict[str, np.ndarray], typing.Tuple[typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]],
+            y:str,
+            ) -> pd.DataFrame:
+        '''
+        This function fits and predicts the pipelines, 
+        with the, optional parameters and splitting 
+        arguments and produces a table of results
+        given the metrics.
+
+        Arguments
+        ---------
+
+        - X: typing.Union[typing.Dict[str, np.ndarray], typing.Tuple[typing.Dict[str, np.ndarray], typing.Dict[str, np.ndarray]]]:
+            The data dictionary that will be used to run
+            the experiments. This may also be a tuple of 
+            data dictionaries used for training and validation
+            splits if :code:`cv=None`. In this case, you may also pass
+            a list of tuples of data dictionaries in the form
+            :code:`[(data_train, data_val), (data_train, data_val), ...]`, 
+            where :code:`data_train` and :code:`data_val` are data dictionaries.
+        
+        - y: str:
+            Please either pass a string, which corresponds to the 
+            key in :code:`X` which contains the labels.
+        
+        Returns
+        ---------
+
+        - results: pandas.DataFrame:
+            The results, with columns:
+            :code:`['pipeline', 'repeat_number', 'split_number', 
+            'metric', 'value', 'splitter', 'params', 'train_id', 
+            'param_updates']`
+        
+        
+        
+        '''
+
+
+        return super().fit(X, y)
