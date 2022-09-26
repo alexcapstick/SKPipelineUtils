@@ -80,21 +80,12 @@ class _DropNaNRowsDD:
         return output
 
 
-# this was not pickle-able
-#DropNaNRowsDD = partialclass(SKTransformerWrapperDD, 
-#                                transformer=_DropNaNRowsDD, 
-#                                all_key_transform=True)
 
 DropNaNRowsDD = partialclass_pickleable(
                                             name='DropNaNRowsDD',
                                             cls=SKTransformerWrapperDD, 
                                             transformer=_DropNaNRowsDD, 
                                             all_key_transform=True)
-
-# this was not pickle-able
-#StandardGroupScalerDD = partialclass(SKTransformerWrapperDD, 
-#                                all_key_transform=False)
-#                                transformer=StandardGroupScaler, 
 
 
 StandardGroupScalerDD = partialclass_pickleable(
