@@ -4,9 +4,11 @@ Documentation
 
 The full documentation is available here. Use the side bar to select the sub-module that is most applicable.
 
-All of these functions can be loaded in the following way::
+All of these functions can be loaded from the :code:`sku` package directly, for example::
 
-	>>> import sku
+   >>> import sku
+   >>> aml.PipelineDD(...)
+
 
 
 
