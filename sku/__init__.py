@@ -30,5 +30,6 @@ __all__ = [
     'DropNaNRowsDD',
     'StandardGroupScalerDD',
     'NumpyToDict',
-    'ProgressParallel'
+    'ProgressParallel',
+    'tqdm_style',
     ]

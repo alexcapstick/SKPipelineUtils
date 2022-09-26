@@ -178,6 +178,7 @@ def pipeline_constructor(
     Example
     ---------
     .. code-block:: 
+
         >>> name_to_object = {
                             
                 'standard_scaler': sku.SKTransformerWrapperDD(StandardScaler, 
@@ -215,8 +216,10 @@ def pipeline_constructor(
         >>> name = 'standard_scaler--ae--standard_scaler--mlp'
         >>> pipeline = pipeline_constructor(name, name_to_object)
 
+
     Here, the pipeline will be returned as:
         .. code-block:: 
+
         [
             ['standard_scaler1', sku.SKTransformerWrapperDD],
             ['ae', sku.SKTransformerWrapperDD],
