@@ -1,14 +1,58 @@
+from __future__ import annotations
 import copy
 import typing
 import numpy as np
 import sklearn
 from sklearn.pipeline import Pipeline
-from .transformer_wrapper import SKTransformerWrapperDD
-from .model_wrapper import SKModelWrapperDD
 import warnings
 
 class PipelineDD(Pipeline):
-    
+    def fit(self, 
+            X:typing.Dict[str, np.ndarray], 
+            y:None=None,
+            ) -> PipelineDD:
+        '''
+        This will fit the pipeline.
+        
+        
+        
+        Arguments
+        ---------
+        
+        - X: typing.Dict[str, np.ndarray]: 
+            A dictionary containing the data.
+            When supplying :code:`X`, please be mindful
+            of the objects in the pipeline and their 
+            data requirements. If you are using model wrappers
+            and transformer wrappers from this package, then 
+            using a dictionary will be more powerful.
+            However, you may supply a :code:`numpy.ndarray`,
+            but all :code:`fit_on`, and :code:`transform_on`
+            and :code:`predict_on` arguments will be ignored
+            and sklearn defaults will be used.
+            An example :code:`X`: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
+
+        
+        - y: None, optional:
+            Ignored unless :code:`X` is a :code:`numpy.ndarray`.
+            If using a data dictionary, please pass labels 
+            in the dictionary to :code:`X`.
+            Defaults to :code:`None`.
+        
+        
+        
+        Returns
+        --------
+        
+        - self: PipelineDD: 
+            This object.
+        
+        
+        '''
+
+        return super().fit(X, y)
+
+
     def transform(
         self, 
         X:typing.Dict[str, np.ndarray],
@@ -26,6 +70,42 @@ class PipelineDD(Pipeline):
                 passed_predict = True
 
         return X_copy
+
+    def predict(self, 
+                X:typing.Dict[str, np.ndarray],
+                ) -> typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]:
+        '''
+        This will predict using the fitted pipeline.
+        
+        
+        
+        Arguments
+        ---------
+        
+        - X: typing.Dict[str, np.ndarray]: 
+            A dictionary containing the data.
+            If :code:`X` is a :code:`numpy.ndarray`, then 
+            the :code:`predict_on` arguments will be ignored
+            and the model will be passed :code:`.predict(X)`.
+            In this case, consider using sklearn. In addition,
+            this will be performed on the first fitted model 
+            if many are fitted.
+            For example: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
+
+        
+        Returns
+        --------
+        
+        - predictions: numpy.ndarray: 
+            The predictions, as a numpy array. If multiple
+            inner lists are given as :code:`predict_on`, then
+            a list of predictions will be returned.
+        
+
+        '''
+
+        return super().predict(X)
+
 
     def score(
         self, 
