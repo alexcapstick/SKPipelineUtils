@@ -31,15 +31,13 @@ class PipelineDD(Pipeline):
             and :code:`predict_on` arguments will be ignored
             and sklearn defaults will be used.
             An example :code:`X`: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
-
         
         - y: None, optional:
             Ignored unless :code:`X` is a :code:`numpy.ndarray`.
             If using a data dictionary, please pass labels 
             in the dictionary to :code:`X`.
             Defaults to :code:`None`.
-        
-        
+
         
         Returns
         --------
@@ -218,7 +216,7 @@ def pipeline_constructor(
 
 
     Here, the pipeline will be returned as:
-        .. code-block:: 
+    .. code-block:: 
 
         [
             ['standard_scaler1', sku.SKTransformerWrapperDD],

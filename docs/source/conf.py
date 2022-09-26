@@ -37,7 +37,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.githubpages",
     'sphinx.ext.autosummary',
-    'sphinx.ext.intersphinx'
+    'sphinx.ext.intersphinx',
 ]
 autosummary_generate = True  # Turn on sphinx.ext.autosummary
 
@@ -64,6 +64,7 @@ napoleon_include_init_with_doc = True
 napoleon_include_special_with_doc = True
 napoleon_use_admonition_for_examples = True
 autodoc_inherit_docstrings = True
+autodoc_typehints = 'both'
 
 import re
 
