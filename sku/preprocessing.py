@@ -9,7 +9,9 @@ import numpy as np
 
 from sklearn.preprocessing import StandardScaler
 
-from aml.preprocessing.transformation_functions import flatten
+import aml
+
+flatten = aml.flatten
 
 from .flatten_wrapper import FlattenWrapper
 from .utils import partialclass_pickleable

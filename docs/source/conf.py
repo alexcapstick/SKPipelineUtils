@@ -11,8 +11,6 @@ sys.path.insert(0, os.path.abspath("../.."))
 # Mock dcarte because it fails to build in readthedocs
 MOCK_MODULES = [
     "aml", 
-    "aml.preprocessing.transformation_functions", 
-    "aml.parallel.parallel",
     ]
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()

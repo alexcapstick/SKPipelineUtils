@@ -1,5 +1,7 @@
 from joblib import Parallel
-from aml.parallel.parallel import ProgressParallel
+import aml
+
+ProgressParallel = aml.ProgressParallel
 
 # package wide styling for progress bars
 tqdm_style = {
