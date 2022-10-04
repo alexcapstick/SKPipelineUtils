@@ -2,7 +2,10 @@ from __future__ import annotations
 import typing
 import numpy as np
 import sklearn
-from aml.preprocessing.transformation_functions import flatten
+
+import aml
+
+flatten = aml.flatten
 
 from .utils import get_default_args
 
@@ -23,7 +26,7 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         a flattening operation. By default, the flattening
         will allow for shape (in_shape[0], -1). Please see the 
         flattening operations in 
-        :code:`aml.preprocessing.transformation_functions.flatten` to 
+        :code:`aml.flatten` to 
         understand the arguments :code:`start_dim` and :code:`end_dim`.
 
         
