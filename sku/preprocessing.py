@@ -244,8 +244,8 @@ flatten_standard_scaler_doc = {
         choose where to flatten the array. By default, the flattening
         will allow for mean values to calculated over an array 
         of shape (in_shape[0], -1). Please see the flattening operations
-        in :code:`aml.preprocessing.transformation_functions.flatten` to 
-        understand the arguments :code:`start_dim` and :code:`end_dim`.
+        in :code:`aml.flatten` to understand the arguments 
+        :code:`start_dim` and :code:`end_dim`.
         
         
         Examples
