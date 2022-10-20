@@ -1259,7 +1259,12 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
         opt_params = [
             {'name': items[0], 'low': items[1][0], 'high': items[1][1]} 
             for items in opt_params]
-        dims = [skopt.space.Real(**items) for items in opt_params]
+        dims = [
+            skopt.space.Integer(**items)
+            if (type(items['low']) == int and type(items['high']) == int)
+            else skopt.space.Real(**items)
+            for items in opt_params 
+            ]
 
         def to_optimise(**params_update):
             pipeline = pipeline_constructor(pipeline_name,
