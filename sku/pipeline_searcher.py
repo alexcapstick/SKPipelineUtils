@@ -1251,11 +1251,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
         self.tqdm_progress.set_postfix({'pm_n': pipeline_name.split('--')[-1]})
 
         results_pipeline = []
-
-        opt_params = [
-            list(d.items())[0] 
-            for d in self.param_grid[pipeline_name]
-            ]
+        opt_params = [d for d in self.param_grid[pipeline_name][0].items()]
         opt_params = [
             {'name': items[0], 'low': items[1][0], 'high': items[1][1]} 
             for items in opt_params]
@@ -1314,9 +1310,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
 
         if not pipeline_name in self.opt_result:
             self.opt_result[pipeline_name] = []
-
         if len(dims)>0:
-
             @skopt.utils.use_named_args(dimensions=dims)
             def named_args_to_optimise(*args, **kwargs):
                 return to_optimise(*args, **kwargs)
