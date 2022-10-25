@@ -294,10 +294,10 @@ class PipelineBasicSearchCV(BaseEstimator):
                     [
                         {
                             'metric': metric, 
-                            'value': func(labels_train, probabilities_test),
+                            'value': func(labels_test, probabilities_test),
                             'repeat_number': nr,
                             'split_number': ns,
-                            'train_or_test': 'train',
+                            'train_or_test': 'test',
                         } 
                         for metric, func in metrics_probability.items()
                     ])
@@ -306,10 +306,10 @@ class PipelineBasicSearchCV(BaseEstimator):
                     [
                         {
                             'metric': metric, 
-                            'value': func(labels_test, probabilities_train),
+                            'value': func(labels_train, probabilities_train),
                             'repeat_number': nr,
                             'split_number': ns,
-                            'train_or_test': 'test',
+                            'train_or_test': 'train',
                         } 
                         for metric, func in metrics_probability.items()
                     ])
