@@ -1,4 +1,5 @@
 from __future__ import annotations
+from unittest.mock import NonCallableMagicMock
 import numpy as np
 import sklearn
 import typing
@@ -22,6 +23,11 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         The model should not be initiated yet, and
         all arguments passed as positional or keyword
         arguments after the model is given.        
+
+        Note: Any attribute or method of the underlying model
+        is accessible as normal as an attribute of this class.
+        The returned value will be wrapped in a list if multiple
+        :code:`fit_on` arguments are used, otherwise a single value is returned.
         
         Arguments
         ---------
@@ -43,6 +49,8 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             they will be wrapped in an outer list, meaning that 
             one :code:`.fit()` is called, with arguments corresponding
             to the keys given as strings.
+            The multiple fit models will be saved in a list, accessible
+            through the :code:`fitted_models` attribute.
             Defaults to :code:`[['X', 'y']]`.
 
         - predict_on: typing.Union[typing.List[str], typing.List[typing.List[str]]]: 
@@ -57,7 +65,7 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             fitted object in each of the fit calls. If there are
             more :code:`.predict()` calls than :code:`.fit()` calls,
             then the predict will be called on the beginning of the fit
-            object list again (ie: the predict calls indefinitely 
+            object list again (ie: the predict calls 
             roll over the fit calls).
             Defaults to :code:`[['X']]`.
         
@@ -66,12 +74,12 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         
         '''
 
-        self.model = model
-        self.model_init = self.model(**kwargs)
+        self._model_class = model
+        self._model_init = self._model_class(**kwargs)
         self._params_model = kwargs
 
-        if hasattr(self.model_init, 'get_params'):
-            params_iterate = self.model_init.get_params()
+        if hasattr(self._model_init, 'get_params'):
+            params_iterate = self._model_init.get_params()
         else:
             params_iterate = kwargs
 
@@ -99,10 +107,10 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
 
         self.fit_on = fit_on
         self.predict_on = predict_on
-        self.fitted_models = None
+        self._fitted_models = None
 
         self._params = {}
-        self._params['model'] = self.model_init
+        self._params['model'] = self._model_init
         self._params['fit_on'] = self.fit_on
         self._params['predict_on'] = self.predict_on
 
@@ -188,8 +196,8 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
                 self._params.update(**self._params_model_show)
             if key in self._params:
                 self._params[key] = value
-            self.model_init = self.model(**self._params_model)
-            self._params['model'] = self.model_init
+            self._model_init = self._model_class(**self._params_model)
+            self._params['model'] = self._model_init
         return super(SKModelWrapperDD, self).set_params(**params)
 
     def fit(self, 
@@ -234,18 +242,18 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         else:
             fit_on_ = self.fit_on
 
-        self.fitted_models = []
+        self._fitted_models = []
         if type(X) == np.ndarray:
-            model_init = self.model(**self._params_model)
+            model_init = self._model_class(**self._params_model)
             model_init.fit(X, y)
-            self.fitted_models.append(model_init)
+            self._fitted_models.append(model_init)
             return self
 
         for keys in fit_on_:
-            model_init = self.model(**self._params_model)
+            model_init = self._model_class(**self._params_model)
             data = [X[key] for key in keys]
             model_init.fit(*data)
-            self.fitted_models.append(model_init)
+            self._fitted_models.append(model_init)
 
         return self
     
@@ -295,7 +303,7 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
 
         '''
 
-        if self.fitted_models is None:
+        if self._fitted_models is None:
             raise TypeError('Please fit the model first.')
 
         output = []
@@ -306,11 +314,11 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             predict_on_ = self.predict_on
 
         if type(X) == np.ndarray:
-            return self.fitted_models[0].predict(X)
+            return self._fitted_models[0].predict(X)
 
         for nk, keys in enumerate(predict_on_):
             data = [X[key] for key in keys]
-            output.append(self.fitted_models[nk%len(self.fitted_models)]
+            output.append(self._fitted_models[nk%len(self._fitted_models)]
                             .predict(*data))
 
         if len(output) == 1:
@@ -366,7 +374,7 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
 
         '''
 
-        if self.fitted_models is None:
+        if self._fitted_models is None:
             raise TypeError('Please fit the model first.')
 
         output = []
@@ -377,11 +385,11 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             predict_on_ = self.predict_on
 
         if type(X) == np.ndarray:
-            return self.fitted_models[0].predict_proba(X)
+            return self._fitted_models[0].predict_proba(X)
 
         for nk, keys in enumerate(predict_on_):
             data = [X[key] for key in keys]
-            output.append(self.fitted_models[nk%len(self.fitted_models)]
+            output.append(self._fitted_models[nk%len(self._fitted_models)]
                             .predict_proba(*data))
 
         if len(output) == 1:
@@ -392,3 +400,54 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
 
         return output
 
+    # defined since __getattr__ causes pickling problems
+    def __getstate__(self):
+        return vars(self)
+
+    # defined since __getattr__ causes pickling problems
+    def __setstate__(self, state):
+        vars(self).update(state)
+
+    def __getattr__(self, name):
+        if self._fitted_models is None:
+            if hasattr(self._model_init, name):
+                attr_list = [getattr(self._model_init, name)]
+            else:
+                raise AttributeError(f"{type(self).__name__} and "\
+                    f"{type(self._model_init).__name__} have no attribute {name}")
+        else:
+            if hasattr(self._fitted_models[0], name):
+                attr_list = [getattr(model, name) for model in self._fitted_models]
+            else:
+                raise AttributeError(f"{type(self).__name__} and "\
+                    f"{type(self._fitted_models[0]).__name__} have no attribute {name}")
+        
+        if np.all([callable(attr) for attr in attr_list]):
+            def wrapper(*args, **kwargs):
+                return_list = [attr(*args, **kwargs) for attr in attr_list]
+                if len(return_list) == 1:
+                    return return_list[0]
+                else:
+                    return return_list
+            return wrapper
+        else:
+            if len(attr_list) == 1:
+                return attr_list[0]
+            else:
+                return attr_list
+
+    @property
+    def model(self,):
+        """
+        This is the model, which can be accessed as an attribute 
+        of this class. If multiple :code:`fit_on` arguments were given,
+        and the class has been fitted, then this will be a list
+        of the fitted models. Otherwise, it will be a single instance.
+        """
+        if self._fitted_models is None:
+            return self._model_init
+        else:
+            if len(self._fitted_models) == 1:
+                return self._fitted_models[0]
+            else:
+                return self._fitted_models

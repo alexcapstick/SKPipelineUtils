@@ -317,7 +317,7 @@ flatten_standard_scaler_doc = {
 
 FlattenStandardScaler.__init__.__doc__ = flatten_standard_scaler_doc['__init__']
 FlattenStandardScaler.fit.__doc__ = flatten_standard_scaler_doc['fit']
-FlattenStandardScaler.transform.__doc__ = flatten_standard_scaler_doc['transform']
+FlattenStandardScaler._transform.__doc__ = flatten_standard_scaler_doc['transform']
 
 
 

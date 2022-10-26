@@ -22,6 +22,11 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         data. This is useful to use when combining
         semi-supervised methods with 
         :code:`sklearn.pipeline.Pipeline`.
+
+        Note: Any attribute or method of the underlying transformer
+        is accessible as normal as an attribute of this class.
+        The returned value will be wrapped in a list if multiple
+        :code:`fit_on` arguments are used, otherwise a single value is returned.
         
         
         Arguments
@@ -46,6 +51,8 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             they will be wrapped in an outer list, meaning that 
             one :code:`.fit()` is called, with arguments corresponding
             to the keys given as strings.
+            The multiple fit models will be saved in a list, accessible
+            through the :code:`fitted_models` attribute.
             Defaults to :code:`[['X', 'y']]`.
 
         - transform_on: typing.Union[typing.List[str], typing.List[typing.List[str]]]: 
@@ -60,7 +67,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             fitted object in each of the fit calls. If there are
             more :code:`.transform()` calls than :code:`.fit()` calls,
             then the transform will be called on the beginning of the fit
-            object list again (ie: the transform calls indefinitely 
+            object list again (ie: the transform calls  
             roll over the fit calls). The first key in each inner list
             will be overwritten with the result from :code:`.transform()`,
             unless :code:`all_key_transform=True`.
@@ -86,12 +93,12 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         
         '''
 
-        self.transformer = transformer
-        self.transformer_init = self.transformer(**kwargs)
+        self._transformer_class = transformer
+        self._transformer_init = self._transformer_class(**kwargs)
         self._params_transformer = kwargs
 
-        if hasattr(self.transformer_init, 'get_params'):
-            params_iterate = self.transformer_init.get_params()
+        if hasattr(self._transformer_init, 'get_params'):
+            params_iterate = self._transformer_init.get_params()
         else:
             params_iterate = kwargs
 
@@ -120,10 +127,10 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         self.fit_on = fit_on
         self.transform_on = transform_on
         self.all_key_transform = all_key_transform
-        self.fitted_transformers = None
+        self._fitted_transformers = None
 
         self._params = {}
-        self._params['transformer'] = self.transformer_init
+        self._params['transformer'] = self._transformer_init
         self._params['fit_on'] = self.fit_on
         self._params['transform_on'] = self.transform_on
         self._params['all_key_transform'] = self.all_key_transform
@@ -215,8 +222,8 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
                 self._params.update(**self._params_transformer_show)
             if key in self._params:
                 self._params[key] = value
-            self.transformer_init = self.transformer(**self._params_transformer)
-            self._params['transformer'] = self.transformer_init
+            self._transformer_init = self._transformer_class(**self._params_transformer)
+            self._params['transformer'] = self._transformer_init
         return super(SKTransformerWrapperDD, self).set_params(**params)
 
     def fit(self, 
@@ -257,19 +264,19 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         else:
             fit_on_ = self.fit_on
 
-        self.fitted_transformers = []
+        self._fitted_transformers = []
         
         if type(X) == np.ndarray:
-            transformer_init = self.transformer(**self._params_transformer)
+            transformer_init = self._transformer_class(**self._params_transformer)
             transformer_init.fit(X, y)
-            self.fitted_transformers.append(transformer_init)
+            self._fitted_transformers.append(transformer_init)
             return self
 
         for keys in fit_on_:
-            transformer_init = self.transformer(**self._params_transformer)
+            transformer_init = self._transformer_class(**self._params_transformer)
             data = [X[key] for key in keys]
             transformer_init.fit(*data)
-            self.fitted_transformers.append(transformer_init)
+            self._fitted_transformers.append(transformer_init)
 
         return self
     
@@ -310,15 +317,15 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         else:
             transform_on_ = self.transform_on
 
-        if self.fitted_transformers is None:
+        if self._fitted_transformers is None:
             raise TypeError('Please fit the trasform first.')
 
         if type(X) == np.ndarray:
-            return self.fitted_transformers[0].transform(X)
+            return self._fitted_transformers[0].transform(X)
 
         for nk, keys in enumerate(transform_on_):
             data = [X_out[key] for key in keys]
-            outputs = (self.fitted_transformers[nk%len(self.fitted_transformers)]
+            outputs = (self._fitted_transformers[nk%len(self._fitted_transformers)]
                         .transform(*data))
             if self.all_key_transform:
                 if len(data) == 1:
@@ -329,3 +336,55 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
                 X_out[keys[0]] = outputs
 
         return X_out
+
+    # defined since __getattr__ causes pickling problems
+    def __getstate__(self):
+        return vars(self)
+
+    # defined since __getattr__ causes pickling problems
+    def __setstate__(self, state):
+        vars(self).update(state)
+
+    def __getattr__(self, name):
+        if self._fitted_transformers is None:
+            if hasattr(self._transformer_init, name):
+                attr_list = [getattr(self._transformer_init, name)]
+            else:
+                raise AttributeError(f"{type(self).__name__} and "\
+                    f"{type(self._transformer_init).__name__} have no attribute {name}")
+        else:
+            if hasattr(self._fitted_transformers[0], name):
+                attr_list = [getattr(transformer, name) for transformer in self._fitted_transformers]
+            else:
+                raise AttributeError(f"{type(self).__name__} and "\
+                    f"{type(self._fitted_transformers[0]).__name__} have no attribute {name}")
+        
+        if np.all([callable(attr) for attr in attr_list]):
+            def wrapper(*args, **kwargs):
+                return_list = [attr(*args, **kwargs) for attr in attr_list]
+                if len(return_list) == 1:
+                    return return_list[0]
+                else:
+                    return return_list
+            return wrapper
+        else:
+            if len(attr_list) == 1:
+                return attr_list[0]
+            else:
+                return attr_list
+
+    @property
+    def transformer(self,):
+        """
+        This is the transformer, which can be accessed as an attribute 
+        of this class. If multiple :code:`fit_on` arguments were given,
+        and the class has been fitted, then this will be a list
+        of the fitted transformers. Otherwise, it will be a single instance.
+        """
+        if self._fitted_transformers is None:
+            return self._transformer_init
+        else:
+            if len(self._fitted_transformers) == 1:
+                return self._fitted_transformers[0]
+            else:
+                return self._fitted_transformers
