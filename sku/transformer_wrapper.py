@@ -305,8 +305,9 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         
         - X_out: typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]]: 
             The data dictionary, with stucture the same as :code:`X`,
-             with transformed :code:`X` data.
-        
+            with transformed :code:`X` data.
+            If :code:`X` is a :code:`numpy.ndarray`, then a :code:`numpy.ndarray` will
+            be returned.
 
         '''
         
@@ -336,6 +337,76 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
                 X_out[keys[0]] = outputs
 
         return X_out
+
+    def fit_transform(self, 
+            X:typing.Dict[str, np.ndarray], 
+            y:None=None,):
+        '''
+        This will fit and transform the transformer being wrapped 
+        and the data given.
+        
+        Arguments
+        ---------
+        
+        - X: typing.Dict[str, np.ndarray]: 
+            A dictionary containing the data.
+            If :code:`X` is a :code:`numpy.ndarray`, then 
+            the :code:`fit_on` arguments will be ignored
+            and the transformer will be passed :code:`.fit_transform(X,y)`.
+            In this case, consider using sklearn.
+            For example: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
+        
+        - y: None, optional:
+            Ignored unless :code:`X` is a :code:`numpy.ndarray`.
+            If using a data dictionary, please pass labels 
+            in the dictionary to :code:`X`.
+            Defaults to :code:`None`.
+        
+        
+        Returns
+        --------
+        
+        - X_out: typing.Dict[str, typing.Union[np.ndarray, typing.Dict[str, np.ndarray]]]: 
+            The data dictionary, with stucture the same as :code:`X`,
+             with transformed :code:`X` data.
+            If :code:`X` is a :code:`numpy.ndarray`, then a :code:`numpy.ndarray` will
+            be returned.
+        
+        
+        '''
+        if hasattr(self._transformer_init, 'fit_transform'):
+            if not any(isinstance(i, list) for i in self.fit_on):
+                fit_on_ = [self.fit_on]
+            else:
+                fit_on_ = self.fit_on
+
+            self._fitted_transformers = []
+            
+            if type(X) == np.ndarray:
+                transformer_init = self._transformer_class(**self._params_transformer)
+                out = transformer_init.fit_transform(X, y)
+                self._fitted_transformers.append(transformer_init)
+                return out
+
+            else:
+                X_out = copy.deepcopy(X)
+                for keys in fit_on_:
+                    transformer_init = self._transformer_class(**self._params_transformer)
+                    data = [X[key] for key in keys]
+                    outputs = transformer_init.fit_transform(*data)
+                    self._fitted_transformers.append(transformer_init)
+                    if self.all_key_transform:
+                        if len(data) == 1:
+                            outputs = [outputs]
+                        for key, output in zip(keys, outputs):
+                            X_out[key] = output
+                    else:
+                        X_out[keys[0]] = outputs
+                return X_out
+            
+        else:
+            self.fit(X=X, y=y)
+            return self.transform(X=X)
 
     # defined since __getattr__ causes pickling problems
     def __getstate__(self):

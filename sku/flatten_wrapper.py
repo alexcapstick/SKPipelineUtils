@@ -267,6 +267,27 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
         else:
             return args, kwargs
 
+    def _unflatten_output(self, out, in_shape):
+        if type(out) == np.ndarray:
+            out = out.reshape(*in_shape)
+
+        elif (type(out) == list) or (type(out) == tuple):
+            if type(self.flatten_arg) == int:
+                out[self.flatten_arg] = out[self.flatten_arg].reshape(*in_shape)
+            else:
+                raise TypeError("unflatten and a string flatten_arg is not " \
+                    "compatible with a transformer that returns lists or tuples. "\
+                    "Please use flatten_arg int instead.")
+        elif type(out) == dict:
+            if type(self.flatten_arg) == str:
+                out[self.flatten_arg] = out[self.flatten_arg].reshape(*in_shape)
+            else:
+                raise TypeError("unflatten and an int flatten_arg is not " \
+                    "compatible with a transformer that returns a dictionary. "\
+                    "Please use flatten_arg str instead.")
+
+        return out
+
     def fit(
         self, 
         *args,
@@ -307,7 +328,6 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
 
         return self
 
-
     def _transform(self, 
                     *args,
                     **kwargs,
@@ -344,27 +364,55 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
 
         # if transform output should be unflattened
         if self.unflatten_transform:
-
-            if type(out) == np.ndarray:
-                out = out.reshape(*in_shape)
-
-            elif (type(out) == list) or (type(out) == tuple):
-                if type(self.flatten_arg) == int:
-                    out[self.flatten_arg] = out[self.flatten_arg].reshape(*in_shape)
-                else:
-                    raise TypeError("unflatten and a string flatten_arg is not " \
-                        "compatible with a transformer that returns lists or tuples. "\
-                        "Please use flatten_arg int instead.")
-            elif type(out) == dict:
-                if type(self.flatten_arg) == str:
-                    out[self.flatten_arg] = out[self.flatten_arg].reshape(*in_shape)
-                else:
-                    raise TypeError("unflatten and an int flatten_arg is not " \
-                        "compatible with a transformer that returns a dictionary. "\
-                        "Please use flatten_arg str instead.")
+            out = self._unflatten_output(out, in_shape)
 
         return out
 
+    def fit_transform(self, *args, **kwargs,):
+        '''
+        Fit and then transform with the estimator and flattened array.
+
+
+        Arguments
+        ---------
+        
+        - args:
+            Arguments passed to the estimator when transforming.
+        
+        - kwargs:
+            Keyword arguments passed to the estimator when transforming.
+
+
+        Returns
+        --------
+        
+        - args_out: FlattenWrapper:
+            The transformed input.
+        
+        
+        '''
+
+        if hasattr(self._estimator, 'fit_transform'):
+
+            args, kwargs, in_shape = self._flatten_args_kwargs(*args, **kwargs, return_shape=True)
+
+            out = self._estimator.fit_transform(
+                *args,
+                **kwargs,
+                )
+
+            # if transform output should be unflattened
+            if self.unflatten_transform:
+                out = self._unflatten_output(out, in_shape)
+
+            return out
+
+        else:    
+            
+            self.fit(*args, **kwargs)
+            out = self._transform(*args, **kwargs)
+            
+            return out
 
     def _predict(self, 
                     *args,
