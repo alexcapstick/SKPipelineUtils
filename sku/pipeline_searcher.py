@@ -91,7 +91,8 @@ class PipelineBasicSearchCV(BaseEstimator):
                 'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
                 'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
                 }
-            results = pscv.fit(X_data)
+            pscv.fit(X_data)
+            results = pscv.cv_results_
 
 
         Arguments
@@ -519,14 +520,6 @@ class PipelineBasicSearchCV(BaseEstimator):
             Please pass a string, which corresponds to the 
             key in :code:`X` which contains the labels.
         
-        Returns
-        ---------
-
-        - results: pandas.DataFrame:
-            The results, with columns:
-            :code:`[['pipeline', 'repeat_number', 'split_number', 'train_or_test', \
-            'metric', 'value', 'splitter', 'params', 'train_id', 'param_updates', \
-            ]]`
         
         
         '''
@@ -543,6 +536,7 @@ class PipelineBasicSearchCV(BaseEstimator):
                 X = [X]
             self.n_splits = len(X)
         else:
+            assert type(X) == dict, "If cv is not None, ensure that X is a dictionary."
             train_test_idx = list(self.cv.split(*[X[split_data] for split_data in self.split_fit_on]))
             self.n_splits = self.cv.get_n_splits(groups=X[self.split_fit_on[-1]])
             X = [(
@@ -636,7 +630,8 @@ class PipelineSearchCV(PipelineBasicSearchCV):
                 'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
                 'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
                 }
-            results = pscv.fit(X_data)
+            pscv.fit(X_data)
+            results = pscv.cv_results_
 
 
         
@@ -809,7 +804,8 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
                 'X': X_labelled, 'y': y_labelled, 'id': id_labelled,
                 'X_unlabelled': X_unlabelled, 'id_unlabelled': id_unlabelled,
                 }
-            results = pscv.fit(X_data)
+            pscv.fit(X_data)
+            results = pscv.cv_results_
 
         
         Arguments
