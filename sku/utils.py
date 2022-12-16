@@ -2,6 +2,7 @@ import inspect
 import typing
 import functools
 import sys
+import inspect
 
 def get_default_args(func:typing.Callable):
     '''
@@ -66,3 +67,63 @@ def partialclass_pickleable(name, cls, *args, **kwds):
         pass
 
     return new_cls
+
+
+
+def _prepare_func_on_args(func_on, input_dict, return_input_keys=False):
+
+    pos_args = []
+    kw_args = []
+    input_keys = []
+
+    if type(func_on) == list:
+        if type(func_on[0]) == str:
+            func_on = [func_on]
+    if type(func_on) == dict:
+        func_on = [func_on]
+    
+    for args in func_on:
+        if type(args) == list:
+            pos_args.append([input_dict[arg] for arg in args])
+            kw_args.append({})
+            input_keys.append(args)
+        
+        elif type(args) == dict:
+            kw_args.append({f_arg: input_dict[i_arg] for f_arg, i_arg in args.items()})
+            pos_args.append([])
+            input_keys.append([i_arg for f_arg, i_arg in args.items()])
+    
+    if return_input_keys:
+        return pos_args, kw_args, input_keys
+    else:
+        return pos_args, kw_args
+
+
+def hasarg(func:typing.Callable, name:str) -> bool:
+    '''
+    Checks if the function can take the 
+    name as an argument
+    
+    
+    Arguments
+    ---------
+    
+    - func: typing.Callable: 
+        Function
+    
+    - name: str: 
+        Name to check in the args
+    
+    
+    
+    Returns
+    --------
+    
+    - out: bool: 
+        True or False
+    
+    
+    '''
+    signature = inspect.signature(func)
+    arg_list = [k for k, v in signature.parameters.items()]
+    return name in arg_list

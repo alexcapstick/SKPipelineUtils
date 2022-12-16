@@ -82,17 +82,19 @@ class _DropNaNRowsDD:
 
 
 DropNaNRowsDD = partialclass_pickleable(
-                                            name='DropNaNRowsDD',
-                                            cls=SKTransformerWrapperDD, 
-                                            transformer=_DropNaNRowsDD, 
-                                            all_key_transform=True)
+    name='DropNaNRowsDD',
+    cls=SKTransformerWrapperDD, 
+    transformer=_DropNaNRowsDD, 
+    all_key_transform=True
+    )
 
 
 StandardGroupScalerDD = partialclass_pickleable(
-                                                name='StandardGroupScalerDD',
-                                                cls=SKTransformerWrapperDD, 
-                                                transformer=StandardGroupScaler, 
-                                                all_key_transform=False)
+    name='StandardGroupScalerDD',
+    cls=SKTransformerWrapperDD, 
+    transformer=StandardGroupScaler, 
+    all_key_transform=False
+    )
 
 
 

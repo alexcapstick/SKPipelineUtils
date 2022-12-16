@@ -5,14 +5,19 @@ import sklearn
 import copy
 import typing
 
-from .utils import get_default_args
+from .utils import get_default_args, _prepare_func_on_args, hasarg
+
 
 
 class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
     def __init__(self, 
                     transformer:typing.Any, 
-                    fit_on:typing.Union[typing.List[str], typing.List[typing.List[str]]] = [['X', 'y']],
-                    transform_on:typing.Union[typing.List[str], typing.List[typing.List[str]]] = [['X']],
+                    fit_on:typing.Union[
+                        typing.Union[typing.List[str], typing.List[typing.List[str]]], 
+                        typing.Dict[str]] = [['X', 'y']],
+                    transform_on:typing.Union[
+                        typing.Union[typing.List[str], typing.List[typing.List[str]]], 
+                        typing.Dict[str]] = [['X']],
                     all_key_transform=False,
                     **kwargs,
                     )->None:
@@ -22,7 +27,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         data. This is useful to use when combining
         semi-supervised methods with 
         :code:`sklearn.pipeline.Pipeline`.
-
+ 
         Note: Any attribute or method of the underlying transformer
         is accessible as normal as an attribute of this class.
         The returned value will be wrapped in a list if multiple
@@ -38,24 +43,37 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             An example would be a custom transformer
             that uses data dictionaries.
         
-        - fit_on: typing.Union[typing.List[str], typing.List[typing.List[str]]]: 
+        - fit_on: typing.Union[typing.Union[typing.List[str], typing.List[typing.List[str]]], typing.Dict[str]]: 
             This allows the user to define the keys in the data 
             dictionary that will be passed to the fit function.
-            The outer list will be iterated over, and the inner
-            list's keys will be used to get the data from the data dictionary,
-            which will be passed in that order as positional arguments
-            to the :code:`.fit()` function. Multiple inner lists
-            will cause the :code:`.fit()` function to be called
-            multiple times, with each fitted version being saved as
-            a unique object in this class. If a list of strings is given then
-            they will be wrapped in an outer list, meaning that 
-            one :code:`.fit()` is called, with arguments corresponding
+            
+            - If List of List or List: The outer list will be iterated over, and the inner \
+            list's keys will be used to get the data from the data dictionary, \
+            which will be passed in that order as positional arguments \
+            to the :code:`.fit()` function. Multiple inner lists \
+            will cause the :code:`.fit()` function to be called \
+            multiple times, with each fitted version being saved as \
+            a unique object in this class. If a list of strings is given then \
+            they will be wrapped in an outer list, meaning that  \
+            one :code:`.fit()` is called, with arguments corresponding \
             to the keys given as strings.
-            The multiple fit models will be saved in a list, accessible
-            through the :code:`fitted_models` attribute.
+
+            - If Dict or List of Dict: The outer list will be iterated over, and the inner \
+            dicts's values will be used to get the data from the data dictionary, \
+            which will be passed in as keyword arguments using the dict's keys \
+            to the :code:`.fit()` function. Multiple inner lists \
+            will cause the :code:`.fit()` function to be called \
+            multiple times, with each fitted version being saved as \
+            a unique object in this class. If just a dict of is given then \
+            they will be wrapped in an outer list, meaning that  \
+            one :code:`.fit()` is called, with arguments corresponding \
+            to the keys and values as before.
+
+            The multiple fit transforms will be saved in a list, accessible 
+            through the :code:`fitted_transforms` attribute.
             Defaults to :code:`[['X', 'y']]`.
 
-        - transform_on: typing.Union[typing.List[str], typing.List[typing.List[str]]]: 
+        - transform_on: typing.Union[typing.Union[typing.List[str], typing.List[typing.List[str]]], typing.Dict[str]]:
             This allows the user to define the keys in the data 
             dictionary that will be passed to the fit function.
             The outer list will be iterated over, and the inner
@@ -227,8 +245,9 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         return super(SKTransformerWrapperDD, self).set_params(**params)
 
     def fit(self, 
-            X:typing.Dict[str, np.ndarray], 
-            y:None=None,
+            X:typing.Union[typing.Dict[str, np.ndarray], np.ndarray], 
+            y:typing.Union[None, np.ndarray]=None,
+            sample_weight:typing.Union[None, np.ndarray]=None,
             ) -> SKTransformerWrapperDD:
         '''
         This will fit the transformer being wrapped.
@@ -236,7 +255,7 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         Arguments
         ---------
         
-        - X: typing.Dict[str, np.ndarray]: 
+        - X: typing.Union[typing.Dict[str, np.ndarray], np.ndarray]: 
             A dictionary containing the data.
             If :code:`X` is a :code:`numpy.ndarray`, then 
             the :code:`fit_on` arguments will be ignored
@@ -244,10 +263,25 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             In this case, consider using sklearn.
             For example: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
         
-        - y: None, optional:
+        - y: typing.Union[str, None, np.ndarray], optional:
             Ignored unless :code:`X` is a :code:`numpy.ndarray`.
             If using a data dictionary, please pass labels 
-            in the dictionary to :code:`X`.
+            in the dictionary to :code:`X`. If 
+            :code:`X` is a :code:`numpy.ndarray` then this
+            should also be a :code:`numpy.ndarray` of targets.
+            Defaults to :code:`None`.
+        
+        - sample_weight: typing.Union[None, np.ndarray], optional:
+            Array of weights that are assigned to 
+            individual samples. If not provided, 
+            then each sample is given unit weight.
+            Ignored unless :code:`X` is a :code:`numpy.ndarray`.
+            If using a data dictionary, please pass sample weights 
+            in the dictionary to :code:`X` and use the :code:`fit_on`
+            argument. If :code:`X` is a :code:`numpy.ndarray` then this
+            should also be a :code:`numpy.ndarray` of sample weights.
+            This will only pass this argument to the underlying transform's 
+            fit function if it includes this argument in the signature.
             Defaults to :code:`None`.
         
         
@@ -259,23 +293,22 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         
         
         '''
-        if not any(isinstance(i, list) for i in self.fit_on):
-            fit_on_ = [self.fit_on]
-        else:
-            fit_on_ = self.fit_on
-
         self._fitted_transformers = []
-        
+
         if type(X) == np.ndarray:
             transformer_init = self._transformer_class(**self._params_transformer)
-            transformer_init.fit(X, y)
+            if hasarg(transformer_init.fit, 'sample_weight'):
+                transformer_init.fit(X, y, sample_weight=sample_weight)
+            else:
+                transformer_init.fit(X, y)
             self._fitted_transformers.append(transformer_init)
             return self
 
-        for keys in fit_on_:
+        pos_args_list, kw_args_list = _prepare_func_on_args(self.fit_on, X)
+
+        for pos_args, kw_args in zip(pos_args_list, kw_args_list):
             transformer_init = self._transformer_class(**self._params_transformer)
-            data = [X[key] for key in keys]
-            transformer_init.fit(*data)
+            transformer_init.fit(*pos_args, **kw_args)
             self._fitted_transformers.append(transformer_init)
 
         return self
@@ -293,9 +326,9 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             A dictionary containing the data.
             If :code:`X` is a :code:`numpy.ndarray`, then 
             the :code:`transform_on` arguments will be ignored
-            and the model will be passed :code:`.transform(X)`.
+            and the transform will be passed :code:`.transform(X)`.
             In this case, consider using sklearn. In addition,
-            this will be performed on the first fitted model 
+            this will be performed on the first fitted transform 
             if many are fitted.
             For example: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
         
@@ -310,37 +343,44 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             be returned.
 
         '''
-        
-        X_out = copy.deepcopy(X)
-
-        if not any(isinstance(i, list) for i in self.transform_on):
-            transform_on_ = [self.transform_on]
-        else:
-            transform_on_ = self.transform_on
 
         if self._fitted_transformers is None:
             raise TypeError('Please fit the trasform first.')
 
         if type(X) == np.ndarray:
             return self._fitted_transformers[0].transform(X)
+        
+        pos_args_list, \
+            kw_args_list, \
+            input_keys_list = _prepare_func_on_args(
+                self.transform_on, 
+                X, 
+                return_input_keys=True
+                )
 
-        for nk, keys in enumerate(transform_on_):
-            data = [X_out[key] for key in keys]
+        X_out = copy.deepcopy(X)
+
+        for nk, (pos_args, kw_args, input_keys) in enumerate(
+            zip(pos_args_list, kw_args_list, input_keys_list)
+            ):
+            
             outputs = (self._fitted_transformers[nk%len(self._fitted_transformers)]
-                        .transform(*data))
+                        .transform(*pos_args, **kw_args))
             if self.all_key_transform:
-                if len(data) == 1:
+                if (len(pos_args) + len(kw_args)) == 1:
                     outputs = [outputs]
-                for key, output in zip(keys, outputs):
-                    X_out[key] = output
+                for input_key, output in zip(input_keys, outputs):
+                    X_out[input_key] = output
             else:
-                X_out[keys[0]] = outputs
+                X_out[input_keys[0]] = outputs
 
         return X_out
 
     def fit_transform(self, 
-            X:typing.Dict[str, np.ndarray], 
-            y:None=None,):
+            X:typing.Union[typing.Dict[str, np.ndarray], np.ndarray], 
+            y:typing.Union[None, np.ndarray]=None,
+            **fit_params
+            ):
         '''
         This will fit and transform the transformer being wrapped 
         and the data given.
@@ -362,6 +402,8 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
             in the dictionary to :code:`X`.
             Defaults to :code:`None`.
         
+        - **fit_params: optional:
+            These are passed to the fit function.
         
         Returns
         --------
@@ -374,36 +416,45 @@ class SKTransformerWrapperDD(sklearn.base.BaseEstimator, sklearn.base.Transforme
         
         
         '''
+        # need to define separately in case underlying transform has only
+        # fit_transform function
         if hasattr(self._transformer_init, 'fit_transform'):
-            if not any(isinstance(i, list) for i in self.fit_on):
-                fit_on_ = [self.fit_on]
-            else:
-                fit_on_ = self.fit_on
 
             self._fitted_transformers = []
             
             if type(X) == np.ndarray:
                 transformer_init = self._transformer_class(**self._params_transformer)
-                out = transformer_init.fit_transform(X, y)
+                out = transformer_init.fit_transform(X, y, **fit_params)
                 self._fitted_transformers.append(transformer_init)
                 return out
 
             else:
+                pos_args_list, \
+                    kw_args_list, \
+                    input_keys_list = _prepare_func_on_args(
+                        self.fit_on, 
+                        X, 
+                        return_input_keys=True
+                        )
+
                 X_out = copy.deepcopy(X)
-                for keys in fit_on_:
+
+                for nk, (pos_args, kw_args, input_keys) in enumerate(
+                    zip(pos_args_list, kw_args_list, input_keys_list)
+                    ):
                     transformer_init = self._transformer_class(**self._params_transformer)
-                    data = [X[key] for key in keys]
-                    outputs = transformer_init.fit_transform(*data)
+                    outputs = transformer_init.fit_transform(*pos_args, **kw_args)
                     self._fitted_transformers.append(transformer_init)
+
                     if self.all_key_transform:
-                        if len(data) == 1:
+                        if (len(pos_args) + len(kw_args)) == 1:
                             outputs = [outputs]
-                        for key, output in zip(keys, outputs):
-                            X_out[key] = output
+                        for input_key, output in zip(input_keys, outputs):
+                            X_out[input_key] = output
                     else:
-                        X_out[keys[0]] = outputs
+                        X_out[input_keys[0]] = outputs
                 return X_out
-            
+
         else:
             self.fit(X=X, y=y)
             return self.transform(X=X)

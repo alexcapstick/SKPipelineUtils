@@ -102,10 +102,12 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
             the array that requires flattening.
             This can either be the keyword, that 
             needs to be given in the method calls,
-            or the idx of the argument. If pairing 
-            this wrapper with ModelWrapper or 
-            TransformerWrapper, please supply an 
-            integer here.
+            or the idx of the argument. Please keep 
+            in mind that an integer here will only
+            work if the fit and predict methods
+            are given positional arguments. To be safe
+            it is best to pass a string here and use
+            keyword argumetns in the methods.
             Defaults to :code:`0`.
         
         - unflatten_transform: bool, optional:
@@ -323,7 +325,8 @@ class FlattenWrapper(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
 
         self._estimator = self.estimator_class(**self._params_estimator)
         self._estimator.fit(
-            *args
+            *args,
+            **kwargs
             )
 
         return self

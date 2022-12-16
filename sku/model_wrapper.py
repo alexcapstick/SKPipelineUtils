@@ -5,13 +5,17 @@ import sklearn
 import typing
 
 
-from .utils import get_default_args
+from .utils import get_default_args, _prepare_func_on_args, hasarg
 
 class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin):
     def __init__(self, 
                     model:typing.Any, 
-                    fit_on:typing.Union[typing.List[str], typing.List[typing.List[str]]] = [['X', 'y']],
-                    predict_on:typing.Union[typing.List[str], typing.List[typing.List[str]]] = [['X']],
+                    fit_on:typing.Union[
+                        typing.Union[typing.List[str], typing.List[typing.List[str]]], 
+                        typing.Dict[str]] = [['X', 'y']],
+                    predict_on:typing.Union[
+                        typing.Union[typing.List[str], typing.List[typing.List[str]]], 
+                        typing.Dict[str]] = [['X']],
                     **kwargs,
                     ) -> None:
         '''
@@ -36,20 +40,34 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             The model to wrap. This model must have
             both :code:`.fit(X, y)` and :code:`.predict(X)`.
             An example would be an abstracted pytorch model.
-        
-        - fit_on: typing.Union[typing.List[str], typing.List[typing.List[str]]]: 
+
+        - fit_on: typing.Union[typing.Union[typing.List[str], typing.List[typing.List[str]]], typing.Dict[str]]: 
             This allows the user to define the keys in the data 
             dictionary that will be passed to the fit function.
-            The outer list will be iterated over, and the inner
-            list's keys will be used to get the data from the data dictionary,
-            which will be passed in that order as positional arguments
-            to the :code:`.fit()` function. Multiple inner lists
-            will cause the :code:`.fit()` function to be called
-            multiple times. If a list of strings is given then
-            they will be wrapped in an outer list, meaning that 
-            one :code:`.fit()` is called, with arguments corresponding
+            
+            - If List of List or List: The outer list will be iterated over, and the inner \
+            list's keys will be used to get the data from the data dictionary, \
+            which will be passed in that order as positional arguments \
+            to the :code:`.fit()` function. Multiple inner lists \
+            will cause the :code:`.fit()` function to be called \
+            multiple times, with each fitted version being saved as \
+            a unique object in this class. If a list of strings is given then \
+            they will be wrapped in an outer list, meaning that  \
+            one :code:`.fit()` is called, with arguments corresponding \
             to the keys given as strings.
-            The multiple fit models will be saved in a list, accessible
+
+            - If Dict or List of Dict: The outer list will be iterated over, and the inner \
+            dicts's values will be used to get the data from the data dictionary, \
+            which will be passed in as keyword arguments using the dict's keys \
+            to the :code:`.fit()` function. Multiple inner lists \
+            will cause the :code:`.fit()` function to be called \
+            multiple times, with each fitted version being saved as \
+            a unique object in this class. If just a dict of is given then \
+            they will be wrapped in an outer list, meaning that  \
+            one :code:`.fit()` is called, with arguments corresponding \
+            to the keys and values as before.
+
+            The multiple fit models will be saved in a list, accessible 
             through the :code:`fitted_models` attribute.
             Defaults to :code:`[['X', 'y']]`.
 
@@ -65,8 +83,12 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             fitted object in each of the fit calls. If there are
             more :code:`.predict()` calls than :code:`.fit()` calls,
             then the predict will be called on the beginning of the fit
-            object list again (ie: the predict calls 
+            object list again (ie: the predict calls  
             roll over the fit calls).
+            If a list of strings is given then
+            they will be wrapped in an outer list, meaning that 
+            one :code:`.predict()` is called, with arguments corresponding
+            to the keys given as strings.
             Defaults to :code:`[['X']]`.
         
         - *kwargs: typing.Any:
@@ -201,8 +223,9 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         return super(SKModelWrapperDD, self).set_params(**params)
 
     def fit(self, 
-            X:typing.Dict[str, np.ndarray], 
-            y:None=None,
+            X:typing.Union[typing.Dict[str, np.ndarray], np.ndarray], 
+            y:typing.Union[None, np.ndarray]=None,
+            sample_weight:typing.Union[None, np.ndarray]=None,
             ) -> SKModelWrapperDD:
         '''
         This will fit the model being wrapped.
@@ -219,12 +242,26 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
             and the model will be passed :code:`.fit(X,y)`.
             In this case, consider using sklearn.
             For example: :code:`X = {'X': X_DATA, 'y': Y_DATA, **kwargs}`.
-
         
-        - y: None, optional:
+        - y: typing.Union[str, None, np.ndarray], optional:
             Ignored unless :code:`X` is a :code:`numpy.ndarray`.
             If using a data dictionary, please pass labels 
-            in the dictionary to :code:`X`.
+            in the dictionary to :code:`X`. If 
+            :code:`X` is a :code:`numpy.ndarray` then this
+            should also be a :code:`numpy.ndarray` of targets.
+            Defaults to :code:`None`.
+        
+        - sample_weight: typing.Union[None, np.ndarray], optional:
+            Array of weights that are assigned to 
+            individual samples. If not provided, 
+            then each sample is given unit weight.
+            Ignored unless :code:`X` is a :code:`numpy.ndarray`.
+            If using a data dictionary, please pass sample weights 
+            in the dictionary to :code:`X` and use the :code:`fit_on`
+            argument. If :code:`X` is a :code:`numpy.ndarray` then this
+            should also be a :code:`numpy.ndarray` of sample weights.
+            This will only pass this argument to the underlying transform's 
+            fit function if it includes this argument in the signature.
             Defaults to :code:`None`.
         
         
@@ -237,22 +274,22 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         
         
         '''
-        if not any(isinstance(i, list) for i in self.fit_on):
-            fit_on_ = [self.fit_on]
-        else:
-            fit_on_ = self.fit_on
-
         self._fitted_models = []
+
         if type(X) == np.ndarray:
             model_init = self._model_class(**self._params_model)
-            model_init.fit(X, y)
+            if hasarg(model_init.fit, 'sample_weight'):
+                model_init.fit(X, y, sample_weight=sample_weight)
+            else:
+                model_init.fit(X, y)
             self._fitted_models.append(model_init)
             return self
 
-        for keys in fit_on_:
+        pos_args_list, kw_args_list = _prepare_func_on_args(self.fit_on, X)
+
+        for pos_args, kw_args in zip(pos_args_list, kw_args_list):
             model_init = self._model_class(**self._params_model)
-            data = [X[key] for key in keys]
-            model_init.fit(*data)
+            model_init.fit(*pos_args, **kw_args)
             self._fitted_models.append(model_init)
 
         return self
@@ -306,20 +343,17 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         if self._fitted_models is None:
             raise TypeError('Please fit the model first.')
 
-        output = []
-
-        if not any(isinstance(i, list) for i in self.predict_on):
-            predict_on_ = [self.predict_on]
-        else:
-            predict_on_ = self.predict_on
-
         if type(X) == np.ndarray:
             return self._fitted_models[0].predict(X)
+        
+        pos_args_list, \
+            kw_args_list= _prepare_func_on_args(self.predict_on, X)
 
-        for nk, keys in enumerate(predict_on_):
-            data = [X[key] for key in keys]
+        output = []
+
+        for nk, (pos_args, kw_args) in enumerate(zip(pos_args_list, kw_args_list)):
             output.append(self._fitted_models[nk%len(self._fitted_models)]
-                            .predict(*data))
+                            .predict(*pos_args, **kw_args))
 
         if len(output) == 1:
             output = output[0]
@@ -377,20 +411,17 @@ class SKModelWrapperDD(sklearn.base.BaseEstimator, sklearn.base.ClassifierMixin)
         if self._fitted_models is None:
             raise TypeError('Please fit the model first.')
 
-        output = []
-
-        if not any(isinstance(i, list) for i in self.predict_on):
-            predict_on_ = [self.predict_on]
-        else:
-            predict_on_ = self.predict_on
-
         if type(X) == np.ndarray:
             return self._fitted_models[0].predict_proba(X)
+        
+        pos_args_list, \
+            kw_args_list= _prepare_func_on_args(self.predict_on, X)
 
-        for nk, keys in enumerate(predict_on_):
-            data = [X[key] for key in keys]
+        output = []
+
+        for nk, (pos_args, kw_args) in enumerate(zip(pos_args_list, kw_args_list)):
             output.append(self._fitted_models[nk%len(self._fitted_models)]
-                            .predict_proba(*data))
+                            .predict_proba(*pos_args, **kw_args))
 
         if len(output) == 1:
             output = output[0]
