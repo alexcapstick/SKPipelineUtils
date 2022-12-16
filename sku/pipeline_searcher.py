@@ -1,6 +1,4 @@
-from abc import abstractmethod
 import copy
-from tracemalloc import stop
 import numpy as np
 import pandas as pd
 import typing
@@ -9,15 +7,11 @@ import uuid
 import joblib
 import functools
 import skopt
-
 from joblib.externals.loky import get_reusable_executor
-
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import ParameterGrid
-
-from .pipeline import PipelineDD, pipeline_constructor
+from .pipeline import pipeline_constructor
 from .progress import tqdm_style, ProgressParallel
-from .model_selection import DataPreSplit
 
 
 
@@ -28,14 +22,6 @@ def _get_relevant_param_updates(pipeline_name, pipeline_update_params):
         if k.split('__')[0] in pipeline_name
         }
     return relevant_param_updates
-
-
-
-
-
-
-
-
 
 
 
@@ -202,7 +188,7 @@ class PipelineBasicSearchCV(BaseEstimator):
             if not combine_splits:
                 raise TypeError('If combine_runs=True, combine_splits must be True')
 
-        self.pipeline_names = pipeline_names
+        self.pipeline_names = pipeline_names if type(pipeline_names) == list else [pipeline_names]
         self.name_to_object = name_to_object
         self.metrics = metrics
         self.metrics_probability = metrics_probability
@@ -406,7 +392,6 @@ class PipelineBasicSearchCV(BaseEstimator):
         # parallel running of fitting
         f_parallel = functools.partial(_test_pipeline_parallel, 
             y=y,
-            pipeline=pipeline,
             metrics=self.metrics,
             metrics_probability=self.metrics_probability,
             combine_splits=self.combine_splits
@@ -414,8 +399,10 @@ class PipelineBasicSearchCV(BaseEstimator):
         try:
             results_single_split = ProgressParallel(
                 tqdm_bar=self.tqdm_progress, 
-                n_jobs=self.n_jobs
+                n_jobs=self.n_jobs,
+                backend='threading'
                 )(joblib.delayed(f_parallel)(
+                    pipeline=copy.deepcopy(pipeline),
                     train_data=train_data,
                     test_data=test_data,
                     ns=ns,
@@ -592,14 +579,7 @@ class PipelineBasicSearchCV(BaseEstimator):
         
         self.cv_results_ = results.reset_index(drop=True)
 
-        return self
-
-
-
-
-
-
-
+        return
 
 
 
