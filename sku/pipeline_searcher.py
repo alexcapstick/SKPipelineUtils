@@ -19,7 +19,7 @@ def _get_relevant_param_updates(pipeline_name, pipeline_update_params):
     relevant_param_updates = {
         k:v 
         for k,v in pipeline_update_params.items() 
-        if k.split('__')[0] in pipeline_name
+        if k.split('__')[0] in pipeline_name.split('--')
         }
     return relevant_param_updates
 
@@ -41,6 +41,8 @@ class PipelineBasicSearchCV(BaseEstimator):
         n_jobs:int=1,
         combine_splits:bool=False,
         combine_runs:bool=False,
+        opt_metric:typing.Union[str, None]=None,
+        minimise:bool=True,
         ):
         '''
         This class allows you to test multiple pipelines
@@ -182,6 +184,18 @@ class PipelineBasicSearchCV(BaseEstimator):
             the metrics. If :code:`True`, 
             :code:`combine_splits` must also be :code:`True`.
             Defaults to :code:`False`.
+
+        - opt_metric: typing.Union[str, None], optional:
+            The metric values to use when determining the 
+            optimal parameters. If :code:`None`, the first
+            metric given in :code:`metrics.keys()` will be used.
+            If a :code:`str`, this should be a key in :code:`metrics`.
+            Defaults to :code:`None`.
+        
+        - minimise: bool, optional:
+            Whether to minimise the metric given in :code:`opt_metric`.
+            If :code:`False`, the metric will be maximised.
+            Defaults to :code:`True`.
         
         '''
 
@@ -202,6 +216,8 @@ class PipelineBasicSearchCV(BaseEstimator):
         self.n_jobs = n_jobs
         self.combine_splits = combine_splits
         self.combine_runs=combine_runs
+        self.opt_metric = opt_metric if not opt_metric is None else list(self.metrics.keys())[0]
+        self.minimise = 1 if minimise else -1
 
         return
 
@@ -576,6 +592,37 @@ class PipelineBasicSearchCV(BaseEstimator):
         return
 
 
+    @property
+    def best_params_(self):
+
+        opt_metric = self.opt_metric
+        minimise = self.minimise
+
+        best_train_ids = (
+            self.cv_results_
+            .query("metric == @opt_metric & train_or_test == 'test'")
+            [['pipeline', 'value', 'train_id']]
+            .groupby(['pipeline', 'train_id'])
+            .mean()
+            .sort_values(by='value', ascending=bool(minimise+1))
+            .reset_index()
+            .drop_duplicates(subset='pipeline')
+            ['train_id']
+            .values
+            )
+
+        best_model_results = (
+            self.cv_results_
+            .query("train_id in @best_train_ids")
+            .drop_duplicates(subset='pipeline')
+            [['pipeline', 'param_updates']]
+            .reset_index(drop=True)
+            .set_index('pipeline')
+            .to_dict()
+            ['param_updates']
+            )
+
+        return best_model_results
 
 
 
@@ -759,15 +806,12 @@ class PipelineSearchCV(PipelineBasicSearchCV):
 
 
 
-
 class PipelineBayesSearchCV(PipelineBasicSearchCV):
     def __init__(
         self,
         *args,
         param_grid:typing.List[typing.Dict[str, typing.List[typing.Any]]]=None,
         max_iter:int=10,
-        opt_metric:typing.Union[str, None]=None,
-        minimise:bool=True,
         **kwargs,
         ):
         '''
@@ -831,18 +875,6 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
             The number of calls to make on each pipeline when
             finding the, optimum params.
             Defaults to :code:`10`.
-
-        - opt_metric: typing.Union[str, None], optional:
-            The metric values to use when determining the 
-           , optimal parameters. If :code:`None`, the first
-            metric given in :code:`metrics.keys()` will be used.
-            If a :code:`str`, this should be a key in :code:`metrics`.
-            Defaults to :code:`None`.
-        
-        - minimise: bool, optional:
-            Whether to minimise the metric given in :code:`opt_metric`.
-            If :code:`False`, the metric will be maximised.
-            Defaults to :code:`True`.
         
         '''
 
@@ -875,9 +907,7 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
 
         self.n_jobs = self.n_jobs
         self.max_iter = max_iter
-        self.opt_metric = opt_metric if not opt_metric is None else list(self.metrics.keys())[0]
         self.opt_result = {}
-        self.minimise = 1 if minimise else -1
 
         return
 
@@ -892,11 +922,14 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
         self.tqdm_progress.set_postfix({'pm_n': pipeline_name.split('--')[-1]})
 
         results_pipeline = []
-        opt_params = [d for d in self.param_grid[pipeline_name][0].items()]
-        opt_params = [
-            {'name': items[0], 'low': items[1][0], 'high': items[1][1]} 
-            for items in opt_params
-            ]
+        if len(self.param_grid[pipeline_name]) == 0:
+            opt_params = []
+        else:
+            opt_params = [d for d in self.param_grid[pipeline_name][0].items()]
+            opt_params = [
+                {'name': items[0], 'low': items[1][0], 'high': items[1][1]} 
+                for items in opt_params
+                ]
         dims = [
             skopt.space.Integer(**items)
             if (type(items['low']) == int and type(items['high']) == int)
@@ -970,25 +1003,3 @@ class PipelineBayesSearchCV(PipelineBasicSearchCV):
 
         return pd.concat(results_pipeline)
 
-    @property
-    def best_params_(self):
-
-        opt_metric = self.opt_metric
-        minimise = self.minimise
-
-        best_train_id = (self.cv_results_
-            .query("metric == @opt_metric & train_or_test == 'test'")
-            [['pipeline', 'value', 'train_id']]
-            .groupby(['pipeline', 'train_id'])
-            .mean()
-            .sort_values(by='value', ascending=bool(minimise+1))
-            .reset_index()
-            .loc[0, 'train_id']
-            )
-
-        best_model_results = self.cv_results_.query("train_id == @best_train_id")
-
-        return {
-            'pipeline': best_model_results.pipeline.values[0],
-            'param_updates': best_model_results.param_updates.values[0]
-            }
