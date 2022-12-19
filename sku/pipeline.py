@@ -176,6 +176,11 @@ def pipeline_constructor(
     of pipeline keys and a dictionary mapping the keys to 
     pipeline objects.
 
+    This function will copy each object before adding
+    it to the pipeline. This means that repeating
+    objects in the :code:`name` will produce
+    separate objects for each.
+
 
     Example
     ---------
@@ -268,7 +273,7 @@ def pipeline_constructor(
                             else v 
                             for i, v in enumerate(objects_in_pipeline)]
     try:
-        pipeline = PipelineDD([[name, name_to_object[object]] 
+        pipeline = PipelineDD([[name, copy.deepcopy(name_to_object[object])] 
                                             for name, object in zip(names_in_pipeline, objects_in_pipeline)],
                                         **pipeline_kwargs)
     except KeyError as e:
