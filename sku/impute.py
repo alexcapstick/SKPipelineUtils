@@ -212,7 +212,7 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
             X_impute[kdtree_values == kdt_v] = knn_imputer.transform(X_impute[kdtree_values == kdt_v])
             pbar.update(1)
             pbar.refresh()
-        
+        pbar.close()
         X[~na_idx] = X_impute
 
         return X
