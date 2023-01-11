@@ -6,10 +6,12 @@ import sklearn
 from sklearn.impute import KNNImputer
 from .utils import get_default_args
 import tqdm
-from .progress import tqdm_style
+from .progress import tqdm_style, ProgressParallel
+import joblib
+import copy
 
 class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
-    def __init__(self, k:int=10, verbose:bool=True, **kwargs):
+    def __init__(self, k:int=10, verbose:bool=True, n_jobs:int=1, **kwargs):
         '''
         This imputer allows you to impute a dataset
         based on a background dataset with a set
@@ -49,6 +51,10 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
         - verbose: bool, optional:
             Print verbose.
             Defaults to :code:`True`.
+        
+        - n_jobs: int, optional:
+            The number of parallel jobs.
+            Defaults to :code:`1`.
 
         - **kwargs:
             The keyword arguments that will be passed to KNNImputer
@@ -74,11 +80,12 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
         self._params['k'] = k
         self.fit_all = set([])
         self.verbose = verbose
+        self._params['n_jobs'] = n_jobs
 
     @classmethod
     def _get_param_names(self):
         '''Get parameter names for the estimator'''
-        params = ['k']
+        params = ['k', 'n_jobs']
         params.extend(list(get_default_args(KNNImputer).keys()))
         return sorted(params)
 
@@ -113,7 +120,7 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
         
         - kdtree_values: typing.Union[None, np.ndarray], optional:
             The background values to use in the filtering. See the example.
-            Currently, only a an array of shape (n,) and (n,1) is accepted.
+            Currently, only a an array of shape (n,) and (1, n) is accepted.
             Defaults to :code:`None`.
         
         
@@ -132,7 +139,7 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
         self.background_X = self.background_X[~na_idx]
         self.kdtree = scipy.spatial.KDTree(data=kdtree_values)
         return self
-    
+
     def transform(
         self, X:np.ndarray, kdtree_values:typing.Union[None, np.ndarray]=None
         )->np.ndarray:
@@ -193,29 +200,48 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
 
         X_impute = X[~na_idx]
 
-        for kdt_v in kdtree_values_unique:
-            # find background with closest kdtree value 
-            _, i = self.kdtree.query(kdt_v, k=self._params['k'])
-            # imputing the input values with the back ground set
-            # from these closest points
-            knn_imputer = KNNImputer(
-                **{key: self._params[key] for key in self.knn_arg_names}
-                )
+        def _impute(kdt_value, imputer, k, kdtree, background_data):
+            _, i = kdtree.query(kdt_value, k=k)
             fit_data = (
-                self.background_X[i] if len(self.background_X[i].shape)>1 
-                else self.background_X[i].reshape(1,-1)
+                background_data[i] if len(background_data[i].shape)>1 
+                else background_data[i].reshape(1,-1)
                 )
             if np.any(np.all(pd.isna(fit_data), axis=0)):
-                fit_data = self.background_X
+                fit_data = background_data
+                fit_all = True
+            else:
+                fit_all = False
+            imputer.fit(fit_data)
+            X_impute[kdtree_values == kdt_value] = imputer.transform(X_impute[kdtree_values == kdt_value])
+
+            return fit_all
+
+        imputer = KNNImputer(
+                **{key: self._params[key] for key in self.knn_arg_names}
+                )
+
+        results = ProgressParallel(
+            tqdm_bar=pbar, backend="threading", n_jobs=self._params['n_jobs']
+            )(
+                joblib.delayed(_impute)(
+                    kdt_v, copy.deepcopy(imputer), k=self._params['k'], 
+                    kdtree=self.kdtree, background_data=self.background_X,
+                    )
+                for kdt_v in kdtree_values_unique
+                )
+
+        for result, kdt_v in zip(results, kdtree_values_unique):
+            if result:
                 self.fit_all.add(kdt_v)
-            knn_imputer.fit(fit_data)
-            X_impute[kdtree_values == kdt_v] = knn_imputer.transform(X_impute[kdtree_values == kdt_v])
-            pbar.update(1)
-            pbar.refresh()
+
         pbar.close()
         X[~na_idx] = X_impute
 
         return X
 
-    def fit_transform(self, *args, **kwargs):
-        raise NotImplementedError("fit_transform is not implemented for this object")
+    def fit_transform(
+        self, X:np.ndarray, y:typing.Any=None, kdtree_values:typing.Union[None, np.ndarray]=None
+        )->np.ndarray:
+
+        self.fit(X=X, y=y, kdtree_values=kdtree_values)
+        return self.transform(X=X, kdtree_values=kdtree_values)
