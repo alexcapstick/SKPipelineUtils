@@ -190,8 +190,13 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
             knn_imputer = KNNImputer(
                 **{key: self._params[key] for key in self.knn_arg_names}
                 )
-            knn_imputer.fit(X[na_idx])
-            X[na_idx] = knn_imputer.transform(X[na_idx])
+            fit_data = self.background_X
+            na_cols_idx = np.all(pd.isna(fit_data), axis=0)
+            knn_imputer.fit(fit_data[:, ~na_cols_idx])
+            transformed_data = knn_imputer.transform(X[na_idx][:, ~na_cols_idx])
+            X_impute_na = np.zeros((transformed_data.shape[0], X.shape[1]))
+            X_impute_na[:, ~na_cols_idx] = transformed_data
+            X[na_idx] = X_impute_na
             kdtree_values = kdtree_values[~na_idx]
             pbar.update(1)
             pbar.refresh()
@@ -206,13 +211,17 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
                 background_data[i] if len(background_data[i].shape)>1 
                 else background_data[i].reshape(1,-1)
                 )
+            na_cols_idx = np.all(pd.isna(fit_data), axis=0)
             if np.any(np.all(pd.isna(fit_data), axis=0)):
                 fit_data = background_data
                 fit_all = True
             else:
                 fit_all = False
-            imputer.fit(fit_data)
-            X_impute[kdtree_values == kdt_value] = imputer.transform(X_impute[kdtree_values == kdt_value])
+            imputer.fit(fit_data[:, ~na_cols_idx])
+            transformed_data = imputer.transform(X_impute[kdtree_values == kdt_value][:, ~na_cols_idx])
+            X_impute_i = np.zeros((transformed_data.shape[0], X_impute.shape[1]))
+            X_impute_i[:, ~na_cols_idx] = transformed_data
+            X_impute[kdtree_values == kdt_value] = X_impute_i
 
             return fit_all
 
