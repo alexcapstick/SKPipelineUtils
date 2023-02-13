@@ -4,6 +4,7 @@ import numpy as np
 import scipy
 import sklearn
 from sklearn.impute import KNNImputer
+from sklearn.preprocessing import StandardScaler
 from .utils import get_default_args
 import tqdm
 from .progress import tqdm_style, ProgressParallel
@@ -11,7 +12,7 @@ import joblib
 import copy
 
 class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin):
-    def __init__(self, k:int=10, verbose:bool=True, n_jobs:int=1, **kwargs):
+    def __init__(self, k:int=10, verbose:bool=True, n_jobs:int=1, normalise=True, **kwargs):
         '''
         This imputer allows you to impute a dataset
         based on a background dataset with a set
@@ -55,6 +56,12 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
         - n_jobs: int, optional:
             The number of parallel jobs.
             Defaults to :code:`1`.
+        
+        - normalise: bool, optional:
+            Whether to centre and scale the data 
+            before doing imputation. The outputted data
+            will not be centred or scaled because this
+            is done at each age matched level.
 
         - **kwargs:
             The keyword arguments that will be passed to KNNImputer
@@ -78,6 +85,7 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
         self.knn_arg_names = list(get_default_args(KNNImputer).keys())
         self.kdtree = None
         self._params['k'] = k
+        self._params['normalise'] = normalise
         self.fit_all = set([])
         self.verbose = verbose
         self._params['n_jobs'] = n_jobs
@@ -190,10 +198,20 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
             knn_imputer = KNNImputer(
                 **{key: self._params[key] for key in self.knn_arg_names}
                 )
+            scaler = StandardScaler()
             fit_data = self.background_X
             na_cols_idx = np.all(pd.isna(fit_data), axis=0)
-            knn_imputer.fit(fit_data[:, ~na_cols_idx])
-            transformed_data = knn_imputer.transform(X[na_idx][:, ~na_cols_idx])
+            # since using knn imputer, need to scale first
+            if self._params['normalise']:
+                fit_data_imputer = scaler.fit_transform(fit_data[:, ~na_cols_idx])
+            else:
+                fit_data_imputer = fit_data[:, ~na_cols_idx]
+            knn_imputer.fit(fit_data_imputer)
+            if self._params['normalise']:
+                transformed_data = scaler.transform(X[na_idx][:, ~na_cols_idx])
+            else:
+                transformed_data = X[na_idx][:, ~na_cols_idx]
+            transformed_data = knn_imputer.transform(transformed_data)
             X_impute_na = np.zeros((transformed_data.shape[0], X.shape[1]))
             X_impute_na[:, ~na_cols_idx] = transformed_data
             X[na_idx] = X_impute_na
@@ -205,7 +223,13 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
 
         X_impute = X[~na_idx]
 
-        def _impute(kdt_value, imputer, k, kdtree, background_data):
+        imputer = KNNImputer(
+            **{key: self._params[key] for key in self.knn_arg_names}
+            )
+        scaler = StandardScaler()
+
+        def _impute(kdt_value, imputer, scaler, k, kdtree, background_data):
+
             _, i = kdtree.query(kdt_value, k=k)
             fit_data = (
                 background_data[i] if len(background_data[i].shape)>1 
@@ -217,24 +241,31 @@ class KDTreeKNNImputer(sklearn.base.BaseEstimator, sklearn.base.TransformerMixin
                 fit_all = True
             else:
                 fit_all = False
-            imputer.fit(fit_data[:, ~na_cols_idx])
-            transformed_data = imputer.transform(X_impute[kdtree_values == kdt_value][:, ~na_cols_idx])
+            if self._params['normalise']:
+                fit_data_imputer = scaler.fit_transform(fit_data[:, ~na_cols_idx])
+            else:
+                fit_data_imputer = fit_data[:, ~na_cols_idx]
+            imputer.fit(fit_data_imputer)
+            if self._params['normalise']:
+                transformed_data = scaler.transform(
+                    X_impute[kdtree_values == kdt_value][:, ~na_cols_idx]
+                    )
+            else:
+                transformed_data = X_impute[kdtree_values == kdt_value][:, ~na_cols_idx]
+            transformed_data = imputer.transform(transformed_data)
             X_impute_i = np.zeros((transformed_data.shape[0], X_impute.shape[1]))
             X_impute_i[:, ~na_cols_idx] = transformed_data
             X_impute[kdtree_values == kdt_value] = X_impute_i
 
             return fit_all
 
-        imputer = KNNImputer(
-                **{key: self._params[key] for key in self.knn_arg_names}
-                )
-
         results = ProgressParallel(
             tqdm_bar=pbar, backend="threading", n_jobs=self._params['n_jobs']
             )(
                 joblib.delayed(_impute)(
-                    kdt_v, copy.deepcopy(imputer), k=self._params['k'], 
-                    kdtree=self.kdtree, background_data=self.background_X,
+                    kdt_v, copy.deepcopy(imputer), copy.deepcopy(scaler),
+                    k=self._params['k'], kdtree=self.kdtree, 
+                    background_data=self.background_X,
                     )
                 for kdt_v in kdtree_values_unique
                 )
