@@ -22,6 +22,7 @@ __all__ = [
     'SKModelWrapperDD',
     'PipelineSearchCV',
     'BasicSearchCV',
+    'Pipeline',
     'PipelineDD',
     'pipeline_constructor',
     'Flatten',
