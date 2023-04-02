@@ -12,6 +12,7 @@ from sklearn.base import BaseEstimator
 from sklearn.model_selection import ParameterGrid
 from .pipeline import pipeline_constructor
 from .progress import tqdm_style, ProgressParallel
+from sklearn.utils import resample
 
 
 def _get_relevant_param_updates(pipeline_name, pipeline_update_params):
@@ -40,6 +41,7 @@ class PipelineBasicSearchCV(BaseEstimator):
         combine_runs: bool = False,
         opt_metric: typing.Union[str, None] = None,
         minimise: bool = True,
+        bootstrap: bool = False,
     ):
         """
         This class allows you to test multiple pipelines
@@ -201,6 +203,12 @@ class PipelineBasicSearchCV(BaseEstimator):
             If :code:`False`, the metric will be maximised.
             Defaults to :code:`True`.
 
+        - bootstrap: bool, optional:
+            Whether to build a bootstrap training sample data
+            before fitting the model. This will be done on
+            every run of every split.
+            Defaults to :code:`False`.
+
         """
 
         if combine_runs:
@@ -226,6 +234,7 @@ class PipelineBasicSearchCV(BaseEstimator):
             opt_metric if not opt_metric is None else list(self.metrics.keys())[0]
         )
         self.minimise = 1 if minimise else -1
+        self.bootstrap = bootstrap
 
         return
 
@@ -401,8 +410,17 @@ class PipelineBasicSearchCV(BaseEstimator):
             metrics,
             metrics_probability,
             combine_splits,
+            bootstrap,
         ):
 
+            if bootstrap:
+                sample_idx = resample(
+                    np.arange(len(train_data["y"])),
+                    n_samples=len(train_data["y"]),
+                    replace=True,
+                    stratify=train_data["y"],
+                )
+                train_data = {k: v[sample_idx] for k, v in train_data.items()}
             pipeline.fit(train_data)
             predictions_train, out_data_train = pipeline.predict(
                 train_data, return_data_dict=True
@@ -488,6 +506,7 @@ class PipelineBasicSearchCV(BaseEstimator):
             metrics=self.metrics,
             metrics_probability=self.metrics_probability,
             combine_splits=self.combine_splits,
+            bootstrap=self.bootstrap,
         )
         try:
             results_single_split = ProgressParallel(
