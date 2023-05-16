@@ -415,10 +415,10 @@ class PipelineBasicSearchCV(BaseEstimator):
 
             if bootstrap:
                 sample_idx = resample(
-                    np.arange(len(train_data["y"])),
-                    n_samples=len(train_data["y"]),
+                    np.arange(len(train_data[y])),
+                    n_samples=len(train_data[y]),
                     replace=True,
-                    stratify=train_data["y"],
+                    stratify=train_data[y],
                 )
                 train_data = {k: v[sample_idx] for k, v in train_data.items()}
             pipeline.fit(train_data)
