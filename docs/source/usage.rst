@@ -10,7 +10,7 @@ To use sku, first install it using pip:
 
 .. code-block:: console
 
-   (.venv) $ pip install SKUtils
+   (.venv) $ pip install git+https://github.com/alexcapstick/SKUtils@main#egg=sku
 
 
 
